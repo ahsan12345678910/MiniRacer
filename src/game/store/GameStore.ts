@@ -21,6 +21,22 @@ export interface LapData {
   lapTimes: number[];
 }
 
+export interface GameSettings {
+  inputMode: 'touchZones' | 'virtualJoystick';
+  soundEnabled: boolean;
+  musicEnabled: boolean;
+  touchZones: {
+    brakeButtonSize: number;
+    brakeButtonMargin: number;
+  };
+  virtualJoystick: {
+    size: number;
+    deadZone: number;
+    maxDistance: number;
+    position: 'left' | 'right';
+  };
+}
+
 export interface GameStoreState {
   car: CarState;
   lapData: LapData;
@@ -28,6 +44,7 @@ export interface GameStoreState {
   isPaused: boolean;
   score: number;
   level: number;
+  settings: GameSettings;
 }
 
 interface GameStore extends GameStoreState {
@@ -55,6 +72,12 @@ interface GameStore extends GameStoreState {
   // Game state
   setScore: (score: number) => void;
   setLevel: (level: number) => void;
+  
+  // Settings
+  updateSettings: (settings: Partial<GameSettings>) => void;
+  setInputMode: (mode: 'touchZones' | 'virtualJoystick') => void;
+  setSoundEnabled: (enabled: boolean) => void;
+  setMusicEnabled: (enabled: boolean) => void;
 }
 
 const initialCarState: CarState = {
@@ -72,6 +95,22 @@ const initialLapData: LapData = {
   lapTimes: [],
 };
 
+const initialSettings: GameSettings = {
+  inputMode: 'touchZones',
+  soundEnabled: true,
+  musicEnabled: true,
+  touchZones: {
+    brakeButtonSize: 80,
+    brakeButtonMargin: 20,
+  },
+  virtualJoystick: {
+    size: 120,
+    deadZone: 10,
+    maxDistance: 60,
+    position: 'left',
+  },
+};
+
 const initialState: GameStoreState = {
   car: initialCarState,
   lapData: initialLapData,
@@ -79,6 +118,7 @@ const initialState: GameStoreState = {
   isPaused: false,
   score: 0,
   level: 1,
+  settings: initialSettings,
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -225,4 +265,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setScore: (score: number) => set({ score }),
   
   setLevel: (level: number) => set({ level }),
+
+  // Settings
+  updateSettings: (newSettings: Partial<GameSettings>) => set((state) => ({
+    settings: { ...state.settings, ...newSettings },
+  })),
+
+  setInputMode: (mode: 'touchZones' | 'virtualJoystick') => set((state) => ({
+    settings: { ...state.settings, inputMode: mode },
+  })),
+
+  setSoundEnabled: (enabled: boolean) => set((state) => ({
+    settings: { ...state.settings, soundEnabled: enabled },
+  })),
+
+  setMusicEnabled: (enabled: boolean) => set((state) => ({
+    settings: { ...state.settings, musicEnabled: enabled },
+  })),
 }));

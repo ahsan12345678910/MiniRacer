@@ -18,3 +18,6 @@ export * from './track';
 
 // Collision exports
 export * from './collision';
+
+// Input exports
+export * from './input';
