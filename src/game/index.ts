@@ -2,6 +2,7 @@
 export * from './GameEngine';
 export * from './GameState';
 export * from './GameManager';
+export * from './GameIntegration';
 
 // Game loop exports
 export * from './loop';
@@ -11,3 +12,9 @@ export * from './store';
 
 // Physics exports
 export * from './physics';
+
+// Track exports
+export * from './track';
+
+// Collision exports
+export * from './collision';
