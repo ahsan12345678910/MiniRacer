@@ -10,10 +10,10 @@ The core car physics model with realistic movement mechanics.
 
 ```typescript
 interface CarPhysicsState {
-  position: { x: number; y: number };  // World position
-  velocity: { x: number; y: number };  // Velocity vector
-  angle: number;                       // Direction in radians
-  speed: number;                       // Speed magnitude
+  position: { x: number; y: number }; // World position
+  velocity: { x: number; y: number }; // Velocity vector
+  angle: number; // Direction in radians
+  speed: number; // Speed magnitude
 }
 ```
 
@@ -21,12 +21,12 @@ interface CarPhysicsState {
 
 ```typescript
 interface CarParameters {
-  maxSpeed: number;      // Maximum speed (units/second)
-  acceleration: number;  // Acceleration force
-  brakePower: number;    // Braking force
-  friction: number;      // Air/rolling resistance (0-1)
-  turnRate: number;      // Turning rate (radians/second)
-  mass: number;          // Car mass for physics
+  maxSpeed: number; // Maximum speed (units/second)
+  acceleration: number; // Acceleration force
+  brakePower: number; // Braking force
+  friction: number; // Air/rolling resistance (0-1)
+  turnRate: number; // Turning rate (radians/second)
+  mass: number; // Car mass for physics
 }
 ```
 
@@ -34,21 +34,23 @@ interface CarParameters {
 
 ```typescript
 interface SurfaceProperties {
-  friction: number;    // Surface friction (0-1)
-  grip: number;        // Surface grip (0-1)
-  roughness: number;   // Speed reduction factor (0-1)
+  friction: number; // Surface friction (0-1)
+  grip: number; // Surface grip (0-1)
+  roughness: number; // Speed reduction factor (0-1)
 }
 ```
 
 ## Key Features
 
 ### 1. Realistic Physics
+
 - **Acceleration/Braking**: Force-based acceleration with mass consideration
 - **Steering**: Speed-dependent turning (less effective at high speeds)
 - **Friction**: Air resistance and rolling friction
 - **Surface Effects**: Different surfaces affect grip, friction, and speed
 
 ### 2. Car Presets
+
 Pre-configured car types with realistic parameters:
 
 - **Sports Car**: High speed, good acceleration, responsive steering
@@ -57,6 +59,7 @@ Pre-configured car types with realistic parameters:
 - **Formula Car**: Maximum performance, very responsive
 
 ### 3. Surface Types
+
 Different surface types with unique properties:
 
 - **Asphalt**: Full grip, normal friction
@@ -95,7 +98,7 @@ const controls: CarControls = {
 // In your game loop
 function update(deltaTime: number) {
   car.update(deltaTime, controls, SURFACE_TYPES.ASPHALT);
-  
+
   const state = car.getState();
   console.log('Position:', state.position);
   console.log('Speed:', state.speed);
@@ -113,7 +116,7 @@ const controls: CarControls = {
 };
 
 // Handle input
-document.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', e => {
   switch (e.key) {
     case 'ArrowUp':
       controls.accelerate = true;
@@ -130,7 +133,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-document.addEventListener('keyup', (e) => {
+document.addEventListener('keyup', e => {
   switch (e.key) {
     case 'ArrowUp':
       controls.accelerate = false;
@@ -159,7 +162,7 @@ const physics = getPhysicsIntegration();
 // Update physics and sync with store
 function gameLoop(deltaTime: number) {
   physics.update(deltaTime);
-  
+
   // Store is automatically updated with new car state
   const carState = useGameStore.getState().car;
   console.log('Store car position:', carState.position);
@@ -169,20 +172,24 @@ function gameLoop(deltaTime: number) {
 ## Physics Implementation Details
 
 ### Acceleration
+
 - Force-based acceleration: `speed += (force / mass) * dt`
 - Surface grip affects acceleration effectiveness
 - Speed is clamped to maximum
 
 ### Steering
+
 - Turning rate decreases at high speeds (realistic handling)
 - Effective turn rate: `turnRate * (1 - speedFactor * 0.5)`
 
 ### Friction
+
 - Exponential speed decay: `speed *= friction^dt`
 - Minimum speed threshold prevents infinite deceleration
 - Surface friction modifies the friction coefficient
 
 ### Surface Effects
+
 - **Grip**: Affects acceleration and braking effectiveness
 - **Friction**: Modifies speed decay rate
 - **Roughness**: Reduces maximum achievable speed

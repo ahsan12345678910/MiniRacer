@@ -43,8 +43,10 @@ export class CollisionSystem {
     const carBounds = this.getCarBounds(carState);
 
     // Check for collisions with all collidable zones
-    const collidableZones = this.track.getZones().filter(zone => zone.properties.isCollidable);
-    
+    const collidableZones = this.track
+      .getZones()
+      .filter(zone => zone.properties.isCollidable);
+
     for (const zone of collidableZones) {
       const collision = this.checkCarZoneCollision(carBounds, zone);
       if (collision.hasCollision) {
@@ -59,7 +61,10 @@ export class CollisionSystem {
   /**
    * Check collision between car bounds and a track zone
    */
-  private checkCarZoneCollision(carBounds: CarBounds, zone: TrackZone): CollisionResult {
+  private checkCarZoneCollision(
+    carBounds: CarBounds,
+    zone: TrackZone
+  ): CollisionResult {
     switch (zone.geometry.type) {
       case 'rectangle':
         return this.checkCarRectangleCollision(carBounds, zone);
@@ -75,8 +80,16 @@ export class CollisionSystem {
   /**
    * Check collision between car and rectangle zone
    */
-  private checkCarRectangleCollision(carBounds: CarBounds, zone: TrackZone): CollisionResult {
-    if (zone.geometry.type !== 'rectangle' || !zone.geometry.width || !zone.geometry.height || zone.geometry.points.length === 0) {
+  private checkCarRectangleCollision(
+    carBounds: CarBounds,
+    zone: TrackZone
+  ): CollisionResult {
+    if (
+      zone.geometry.type !== 'rectangle' ||
+      !zone.geometry.width ||
+      !zone.geometry.height ||
+      zone.geometry.points.length === 0
+    ) {
       return { hasCollision: false, collisionType: 'none' };
     }
 
@@ -91,12 +104,18 @@ export class CollisionSystem {
 
     // Check if any car corner is inside the zone
     for (const corner of carCorners) {
-      if (corner.x >= zoneTopLeft.x && corner.x <= zoneRight &&
-          corner.y >= zoneTopLeft.y && corner.y <= zoneBottom) {
-        
+      if (
+        corner.x >= zoneTopLeft.x &&
+        corner.x <= zoneRight &&
+        corner.y >= zoneTopLeft.y &&
+        corner.y <= zoneBottom
+      ) {
         // Calculate collision normal and penetration
-        const collisionInfo = this.calculateRectangleCollisionInfo(carBounds, zone);
-        
+        const collisionInfo = this.calculateRectangleCollisionInfo(
+          carBounds,
+          zone
+        );
+
         return {
           hasCollision: true,
           collisionType: zone.type === 'barrier' ? 'barrier' : 'none',
@@ -114,8 +133,15 @@ export class CollisionSystem {
   /**
    * Check collision between car and circle zone
    */
-  private checkCarCircleCollision(carBounds: CarBounds, zone: TrackZone): CollisionResult {
-    if (zone.geometry.type !== 'circle' || !zone.geometry.radius || zone.geometry.points.length === 0) {
+  private checkCarCircleCollision(
+    carBounds: CarBounds,
+    zone: TrackZone
+  ): CollisionResult {
+    if (
+      zone.geometry.type !== 'circle' ||
+      !zone.geometry.radius ||
+      zone.geometry.points.length === 0
+    ) {
       return { hasCollision: false, collisionType: 'none' };
     }
 
@@ -127,7 +153,7 @@ export class CollisionSystem {
     // Check if car center is within circle
     const distance = Math.sqrt(
       Math.pow(carBounds.center.x - zoneCenter.x, 2) +
-      Math.pow(carBounds.center.y - zoneCenter.y, 2)
+        Math.pow(carBounds.center.y - zoneCenter.y, 2)
     );
 
     if (distance <= zoneRadius) {
@@ -153,7 +179,10 @@ export class CollisionSystem {
   /**
    * Check collision between car and polygon zone
    */
-  private checkCarPolygonCollision(carBounds: CarBounds, zone: TrackZone): CollisionResult {
+  private checkCarPolygonCollision(
+    carBounds: CarBounds,
+    zone: TrackZone
+  ): CollisionResult {
     if (zone.geometry.type !== 'polygon') {
       return { hasCollision: false, collisionType: 'none' };
     }
@@ -212,11 +241,19 @@ export class CollisionSystem {
   /**
    * Calculate collision information for rectangle collision
    */
-  private calculateRectangleCollisionInfo(carBounds: CarBounds, zone: TrackZone): {
+  private calculateRectangleCollisionInfo(
+    carBounds: CarBounds,
+    zone: TrackZone
+  ): {
     normal: { x: number; y: number };
     penetration: number;
   } {
-    if (zone.geometry.type !== 'rectangle' || !zone.geometry.width || !zone.geometry.height || zone.geometry.points.length === 0) {
+    if (
+      zone.geometry.type !== 'rectangle' ||
+      !zone.geometry.width ||
+      !zone.geometry.height ||
+      zone.geometry.points.length === 0
+    ) {
       return { normal: { x: 0, y: 0 }, penetration: 0 };
     }
 
@@ -262,13 +299,17 @@ export class CollisionSystem {
   /**
    * Check if point is inside polygon
    */
-  private isPointInPolygon(x: number, y: number, points: Array<{ x: number; y: number }>): boolean {
+  private isPointInPolygon(
+    x: number,
+    y: number,
+    points: Array<{ x: number; y: number }>
+  ): boolean {
     let inside = false;
 
     for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
       const pointI = points[i];
       const pointJ = points[j];
-      
+
       if (!pointI || !pointJ) continue;
 
       const xi = pointI.x;
@@ -276,7 +317,7 @@ export class CollisionSystem {
       const xj = pointJ.x;
       const yj = pointJ.y;
 
-      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
         inside = !inside;
       }
     }
@@ -310,11 +351,12 @@ export class CollisionSystem {
     });
 
     // Reduce velocity in collision direction
-    const velocityDot = carState.velocity.x * normal.x + carState.velocity.y * normal.y;
+    const velocityDot =
+      carState.velocity.x * normal.x + carState.velocity.y * normal.y;
     if (velocityDot > 0) {
       const newVelocityX = carState.velocity.x - normal.x * velocityDot * 0.8;
       const newVelocityY = carState.velocity.y - normal.y * velocityDot * 0.8;
-      
+
       car.setState({
         ...car.getState(),
         velocity: { x: newVelocityX, y: newVelocityY },
@@ -331,7 +373,10 @@ export class CollisionSystem {
     }
 
     const carState = car.getState();
-    const checkpoint = this.track.getCheckpointAt(carState.position.x, carState.position.y);
+    const checkpoint = this.track.getCheckpointAt(
+      carState.position.x,
+      carState.position.y
+    );
 
     if (checkpoint) {
       return {
@@ -353,10 +398,15 @@ export class CollisionSystem {
     }
 
     const carState = car.getState();
-    const finishZones = this.track.getZones().filter(zone => zone.type === 'finishLine');
+    const finishZones = this.track
+      .getZones()
+      .filter(zone => zone.type === 'finishLine');
 
     for (const zone of finishZones) {
-      const collision = this.checkCarZoneCollision(this.getCarBounds(carState), zone);
+      const collision = this.checkCarZoneCollision(
+        this.getCarBounds(carState),
+        zone
+      );
       if (collision.hasCollision) {
         return {
           ...collision,

@@ -64,7 +64,10 @@ export class GameIntegration {
 
     // Get surface properties at car position
     const carState = this.car.getState();
-    const surface = this.track.getSurfaceAt(carState.position.x, carState.position.y);
+    const surface = this.track.getSurfaceAt(
+      carState.position.x,
+      carState.position.y
+    );
 
     // Convert surface properties to physics format
     const surfaceProperties = {
@@ -77,20 +80,26 @@ export class GameIntegration {
     this.car.update(deltaTime, this.controls, surfaceProperties);
 
     // Check for collisions
-    const collisionResult = this.collisionSystem.resolveBarrierCollision(this.car);
+    const collisionResult = this.collisionSystem.resolveBarrierCollision(
+      this.car
+    );
     if (collisionResult.hasCollision) {
       console.log('Collision detected:', collisionResult.collisionType);
     }
 
     // Check for checkpoints
-    const checkpointResult = this.collisionSystem.checkCheckpointCollision(this.car);
+    const checkpointResult = this.collisionSystem.checkCheckpointCollision(
+      this.car
+    );
     if (checkpointResult.hasCollision) {
       console.log('Checkpoint reached!');
       // Handle checkpoint logic here
     }
 
     // Check for finish line
-    const finishResult = this.collisionSystem.checkFinishLineCollision(this.car);
+    const finishResult = this.collisionSystem.checkFinishLineCollision(
+      this.car
+    );
     if (finishResult.hasCollision) {
       console.log('Finish line crossed!');
       // Handle finish line logic here
@@ -110,8 +119,12 @@ export class GameIntegration {
    */
   private updateGameStore(): void {
     const carState = this.car.getState();
-    useGameStore.getState().setCarPosition(carState.position.x, carState.position.y);
-    useGameStore.getState().setCarVelocity(carState.velocity.x, carState.velocity.y);
+    useGameStore
+      .getState()
+      .setCarPosition(carState.position.x, carState.position.y);
+    useGameStore
+      .getState()
+      .setCarVelocity(carState.velocity.x, carState.velocity.y);
     useGameStore.getState().setCarAngle(carState.angle);
   }
 
@@ -192,8 +205,15 @@ export class GameIntegration {
     }
 
     const carState = this.car.getState();
-    const surface = this.track.getSurfaceAt(carState.position.x, carState.position.y);
-    return surface.type === 'asphalt' || surface.type === 'startLine' || surface.type === 'finishLine';
+    const surface = this.track.getSurfaceAt(
+      carState.position.x,
+      carState.position.y
+    );
+    return (
+      surface.type === 'asphalt' ||
+      surface.type === 'startLine' ||
+      surface.type === 'finishLine'
+    );
   }
 
   /**
@@ -205,7 +225,10 @@ export class GameIntegration {
     }
 
     const carState = this.car.getState();
-    const surface = this.track.getSurfaceAt(carState.position.x, carState.position.y);
+    const surface = this.track.getSurfaceAt(
+      carState.position.x,
+      carState.position.y
+    );
     return surface.type;
   }
 

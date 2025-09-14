@@ -4,17 +4,20 @@ import { LapSystem, LapTime, formatLapTime } from '../game/LapSystem';
 
 export interface LapHUDProps {
   lapSystem: LapSystem;
-  style?: any;
+  style?: Record<string, unknown>;
 }
 
 export const LapHUD: React.FC<LapHUDProps> = ({ lapSystem, style }) => {
   const state = lapSystem.getState();
-  const currentLapTime = lapSystem.getCurrentLapTime();
   const raceStats = lapSystem.getRaceStats();
 
   const renderLapTime = (lapTime: LapTime, isCurrent: boolean = false) => {
-    const timeColor = lapTime.isBestLap ? '#FFD700' : isCurrent ? '#00FF00' : '#FFFFFF';
-    
+    const timeColor = lapTime.isBestLap
+      ? '#FFD700'
+      : isCurrent
+        ? '#00FF00'
+        : '#FFFFFF';
+
     return (
       <View key={lapTime.lapNumber} style={styles.lapTimeRow}>
         <Text style={[styles.lapNumber, { color: timeColor }]}>
@@ -23,9 +26,7 @@ export const LapHUD: React.FC<LapHUDProps> = ({ lapSystem, style }) => {
         <Text style={[styles.lapTime, { color: timeColor }]}>
           {formatLapTime(lapTime.time)}
         </Text>
-        {lapTime.isBestLap && (
-          <Text style={styles.bestLapIndicator}>★</Text>
-        )}
+        {lapTime.isBestLap && <Text style={styles.bestLapIndicator}>★</Text>}
       </View>
     );
   };
@@ -38,11 +39,13 @@ export const LapHUD: React.FC<LapHUDProps> = ({ lapSystem, style }) => {
           {state.currentLap} / {state.totalLaps} Laps
         </Text>
         <View style={styles.progressBar}>
-          <View 
+          <View
             style={[
-              styles.progressFill, 
-              { width: `${raceStats.completedLaps / state.totalLaps * 100}%` }
-            ]} 
+              styles.progressFill,
+              {
+                width: `${(raceStats.completedLaps / state.totalLaps) * 100}%`,
+              },
+            ]}
           />
         </View>
       </View>
@@ -84,7 +87,9 @@ export const LapHUD: React.FC<LapHUDProps> = ({ lapSystem, style }) => {
           <Text style={styles.statusText}>Racing...</Text>
         )}
         {state.isRaceFinished && (
-          <Text style={[styles.statusText, styles.finishedText]}>Race Finished!</Text>
+          <Text style={[styles.statusText, styles.finishedText]}>
+            Race Finished!
+          </Text>
         )}
       </View>
 

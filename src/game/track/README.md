@@ -36,7 +36,13 @@ interface TrackData {
 ```typescript
 interface TrackZone {
   id: string;
-  type: 'asphalt' | 'grass' | 'barrier' | 'startLine' | 'checkpoint' | 'finishLine';
+  type:
+    | 'asphalt'
+    | 'grass'
+    | 'barrier'
+    | 'startLine'
+    | 'checkpoint'
+    | 'finishLine';
   name: string;
   color: string;
   properties: {

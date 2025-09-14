@@ -1,7 +1,7 @@
-export { 
-  CollisionSystem, 
-  getCollisionSystem, 
+export {
+  CollisionSystem,
+  getCollisionSystem,
   createCollisionSystem,
   type CollisionResult,
-  type CarBounds 
+  type CarBounds,
 } from './Collision';

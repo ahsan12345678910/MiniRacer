@@ -7,11 +7,11 @@ import { getGameManager } from '../game/GameManager';
 const GameScreenExample: React.FC = () => {
   const navigation = useNavigation();
   const gameManager = getGameManager();
-  
+
   // Subscribe to game state changes
-  const car = useGameStore((state) => state.car);
-  const lapData = useGameStore((state) => state.lapData);
-  const score = useGameStore((state) => state.score);
+  const car = useGameStore(state => state.car);
+  const lapData = useGameStore(state => state.lapData);
+  const score = useGameStore(state => state.score);
 
   const [gameStarted, setGameStarted] = useState(false);
 
@@ -64,17 +64,15 @@ const GameScreenExample: React.FC = () => {
 
       <View style={styles.gameArea}>
         <Text style={styles.gameText}>MiniRacer Game</Text>
-        
+
         {/* Game State Display */}
         <View style={styles.gameStateContainer}>
           <Text style={styles.stateText}>
             Position: ({car.position.x.toFixed(1)}, {car.position.y.toFixed(1)})
           </Text>
+          <Text style={styles.stateText}>Speed: {car.speed.toFixed(2)}</Text>
           <Text style={styles.stateText}>
-            Speed: {car.speed.toFixed(2)}
-          </Text>
-          <Text style={styles.stateText}>
-            Angle: {(car.angle * 180 / Math.PI).toFixed(1)}°
+            Angle: {((car.angle * 180) / Math.PI).toFixed(1)}°
           </Text>
           <Text style={styles.stateText}>
             Lap: {lapData.currentLap}/{lapData.totalLaps}
@@ -87,28 +85,46 @@ const GameScreenExample: React.FC = () => {
         {/* Game Controls */}
         <View style={styles.controlsContainer}>
           {!gameStarted ? (
-            <TouchableOpacity style={styles.startButton} onPress={handleStartGame}>
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={handleStartGame}
+            >
               <Text style={styles.buttonText}>Start Game</Text>
             </TouchableOpacity>
           ) : (
             <>
               <View style={styles.controlRow}>
-                <TouchableOpacity style={styles.controlButton} onPress={handleTurnLeft}>
+                <TouchableOpacity
+                  style={styles.controlButton}
+                  onPress={handleTurnLeft}
+                >
                   <Text style={styles.buttonText}>← Turn Left</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.controlButton} onPress={handleTurnRight}>
+                <TouchableOpacity
+                  style={styles.controlButton}
+                  onPress={handleTurnRight}
+                >
                   <Text style={styles.buttonText}>Turn Right →</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.controlRow}>
-                <TouchableOpacity style={styles.controlButton} onPress={handleAccelerate}>
+                <TouchableOpacity
+                  style={styles.controlButton}
+                  onPress={handleAccelerate}
+                >
                   <Text style={styles.buttonText}>Accelerate</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.controlButton} onPress={handleBrake}>
+                <TouchableOpacity
+                  style={styles.controlButton}
+                  onPress={handleBrake}
+                >
                   <Text style={styles.buttonText}>Brake</Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.stopButton} onPress={handleStopGame}>
+              <TouchableOpacity
+                style={styles.stopButton}
+                onPress={handleStopGame}
+              >
                 <Text style={styles.buttonText}>Stop Game</Text>
               </TouchableOpacity>
             </>
@@ -116,10 +132,9 @@ const GameScreenExample: React.FC = () => {
         </View>
 
         <Text style={styles.instruction}>
-          {gameStarted 
+          {gameStarted
             ? 'Game is running with 60 FPS fixed timestep!'
-            : 'Press Start Game to begin the racing simulation'
-          }
+            : 'Press Start Game to begin the racing simulation'}
         </Text>
       </View>
     </View>

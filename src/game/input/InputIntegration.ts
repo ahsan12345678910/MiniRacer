@@ -11,10 +11,15 @@ export class InputIntegration {
   constructor(screenWidth: number = 400, screenHeight: number = 800) {
     // Initialize input manager with settings from store
     const storeSettings = useGameStore.getState().settings;
-    const inputSettings = this.convertGameSettingsToInputSettings(storeSettings);
-    
-    this.inputManager = new InputManager(screenWidth, screenHeight, inputSettings);
-    
+    const inputSettings =
+      this.convertGameSettingsToInputSettings(storeSettings);
+
+    this.inputManager = new InputManager(
+      screenWidth,
+      screenHeight,
+      inputSettings
+    );
+
     // Set up controls change callback
     this.inputManager.setControlsChangeCallback((controls: CarControls) => {
       this.handleControlsChange(controls);
@@ -24,7 +29,9 @@ export class InputIntegration {
   /**
    * Convert GameStore settings to InputManager settings
    */
-  private convertGameSettingsToInputSettings(gameSettings: GameSettings): InputSettings {
+  private convertGameSettingsToInputSettings(
+    gameSettings: GameSettings
+  ): InputSettings {
     return {
       mode: gameSettings.inputMode,
       touchZones: {
@@ -48,19 +55,19 @@ export class InputIntegration {
   private handleControlsChange(controls: CarControls): void {
     // Apply controls to car physics
     const store = useGameStore.getState();
-    
+
     if (controls.accelerate) {
       store.accelerate(1.0);
     }
-    
+
     if (controls.brake) {
       store.brake(1.0);
     }
-    
+
     if (controls.turnLeft) {
       store.turn(-0.1);
     }
-    
+
     if (controls.turnRight) {
       store.turn(0.1);
     }
@@ -71,7 +78,8 @@ export class InputIntegration {
    */
   updateFromGameStore(): void {
     const storeSettings = useGameStore.getState().settings;
-    const inputSettings = this.convertGameSettingsToInputSettings(storeSettings);
+    const inputSettings =
+      this.convertGameSettingsToInputSettings(storeSettings);
     this.inputManager.updateSettings(inputSettings);
   }
 

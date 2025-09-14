@@ -9,11 +9,13 @@ This directory contains the core game systems for MiniRacer, including the fixed
 The game uses a fixed timestep loop running at 60 FPS for consistent physics and gameplay.
 
 #### Files:
+
 - `loop/FixedStepLoop.ts` - Core fixed timestep loop implementation
 - `loop/GameLoopManager.ts` - Manager that connects the loop to the game store
 - `loop/index.ts` - Exports for the loop system
 
 #### Features:
+
 - **60 FPS Fixed Timestep**: Consistent ~16.67ms updates
 - **Spiral of Death Prevention**: Clamps maximum frame time to 250ms
 - **Accumulator Pattern**: Handles variable frame rates gracefully
@@ -24,6 +26,7 @@ The game uses a fixed timestep loop running at 60 FPS for consistent physics and
 The game state is managed using Zustand for reactive state updates.
 
 #### Files:
+
 - `store/GameStore.ts` - Zustand store with game state and actions
 - `store/index.ts` - Store exports
 
@@ -31,26 +34,28 @@ The game state is managed using Zustand for reactive state updates.
 
 ```typescript
 interface GameStoreState {
-  car: CarState;           // Car position, velocity, angle, speed
-  lapData: LapData;        // Lap tracking and timing
-  isGameRunning: boolean;  // Game running state
-  isPaused: boolean;       // Pause state
-  score: number;           // Current score
-  level: number;           // Current level
+  car: CarState; // Car position, velocity, angle, speed
+  lapData: LapData; // Lap tracking and timing
+  isGameRunning: boolean; // Game running state
+  isPaused: boolean; // Pause state
+  score: number; // Current score
+  level: number; // Current level
 }
 ```
 
 #### Car State:
+
 ```typescript
 interface CarState {
   position: { x: number; y: number };
   velocity: { x: number; y: number };
-  angle: number;           // in radians
-  speed: number;           // magnitude of velocity
+  angle: number; // in radians
+  speed: number; // magnitude of velocity
 }
 ```
 
 #### Lap Data:
+
 ```typescript
 interface LapData {
   currentLap: number;
@@ -66,9 +71,11 @@ interface LapData {
 The GameManager provides a high-level interface for controlling the game.
 
 #### Files:
+
 - `GameManager.ts` - High-level game control interface
 
 #### Features:
+
 - Start/stop game loop
 - Pause/resume functionality
 - Car control methods (accelerate, brake, turn)
@@ -88,8 +95,8 @@ const gameManager = getGameManager();
 gameManager.startGame();
 
 // Access game state reactively
-const car = useGameStore((state) => state.car);
-const score = useGameStore((state) => state.score);
+const car = useGameStore(state => state.car);
+const score = useGameStore(state => state.score);
 ```
 
 ### Car Controls
@@ -108,6 +115,7 @@ gameManager.turn(0.1); // positive = right, negative = left
 ### Game State Updates
 
 The game loop automatically calls `store.update(deltaTime)` at 60 FPS, which:
+
 - Updates car physics (position, velocity)
 - Updates lap timing
 - Handles game state transitions
@@ -121,7 +129,7 @@ function GameComponent() {
   // Subscribe to specific state changes
   const car = useGameStore((state) => state.car);
   const isGameRunning = useGameStore((state) => state.isGameRunning);
-  
+
   // Component will re-render when subscribed state changes
   return (
     <View>
@@ -142,6 +150,7 @@ function GameComponent() {
 ## Example Implementation
 
 See `screens/GameScreenExample.tsx` for a complete example of:
+
 - Starting/stopping the game loop
 - Subscribing to game state
 - Implementing car controls

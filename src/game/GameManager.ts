@@ -7,20 +7,20 @@ export class GameManager {
   startGame(): void {
     // Initialize game state
     useGameStore.getState().startGame();
-    
+
     // Start the game loop
     this.gameLoopManager.start();
-    
+
     console.log('Game started with 60 FPS fixed timestep');
   }
 
   stopGame(): void {
     // Stop the game loop
     this.gameLoopManager.stop();
-    
+
     // Reset game state
     useGameStore.getState().stopGame();
-    
+
     console.log('Game stopped');
   }
 

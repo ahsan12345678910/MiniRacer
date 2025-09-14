@@ -1,25 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useGameStore } from '../game/store/GameStore';
 import { getGameManager } from '../game/GameManager';
-import { InputControls, useInputIntegration } from '../game/input/InputComponents';
+import {
+  InputControls,
+  useInputIntegration,
+} from '../game/input/InputComponents';
 
 const GameScreenWithInput: React.FC = () => {
   const navigation = useNavigation();
   const gameManager = getGameManager();
-  
+
   // Get screen dimensions
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-  
+
   // Initialize input integration
   const inputIntegration = useInputIntegration(screenWidth, screenHeight);
-  
+
   // Subscribe to game state changes
-  const car = useGameStore((state) => state.car);
-  const lapData = useGameStore((state) => state.lapData);
-  const score = useGameStore((state) => state.score);
-  const settings = useGameStore((state) => state.settings);
+  const car = useGameStore(state => state.car);
+  const lapData = useGameStore(state => state.lapData);
+  const score = useGameStore(state => state.score);
+  const settings = useGameStore(state => state.settings);
 
   const [gameStarted, setGameStarted] = useState(false);
 
@@ -48,7 +57,8 @@ const GameScreenWithInput: React.FC = () => {
   };
 
   const handleSwitchInputMode = () => {
-    const newMode = settings.inputMode === 'touchZones' ? 'virtualJoystick' : 'touchZones';
+    const newMode =
+      settings.inputMode === 'touchZones' ? 'virtualJoystick' : 'touchZones';
     useGameStore.getState().setInputMode(newMode);
   };
 
@@ -66,17 +76,15 @@ const GameScreenWithInput: React.FC = () => {
 
       <View style={styles.gameArea}>
         <Text style={styles.gameText}>MiniRacer Game</Text>
-        
+
         {/* Game State Display */}
         <View style={styles.gameStateContainer}>
           <Text style={styles.stateText}>
             Position: ({car.position.x.toFixed(1)}, {car.position.y.toFixed(1)})
           </Text>
+          <Text style={styles.stateText}>Speed: {car.speed.toFixed(2)}</Text>
           <Text style={styles.stateText}>
-            Speed: {car.speed.toFixed(2)}
-          </Text>
-          <Text style={styles.stateText}>
-            Angle: {(car.angle * 180 / Math.PI).toFixed(1)}°
+            Angle: {((car.angle * 180) / Math.PI).toFixed(1)}°
           </Text>
           <Text style={styles.stateText}>
             Lap: {lapData.currentLap}/{lapData.totalLaps}
@@ -89,9 +97,15 @@ const GameScreenWithInput: React.FC = () => {
         {/* Input Mode Display */}
         <View style={styles.inputModeContainer}>
           <Text style={styles.inputModeText}>
-            Input Mode: {settings.inputMode === 'touchZones' ? 'Touch Zones' : 'Virtual Joystick'}
+            Input Mode:{' '}
+            {settings.inputMode === 'touchZones'
+              ? 'Touch Zones'
+              : 'Virtual Joystick'}
           </Text>
-          <TouchableOpacity style={styles.switchButton} onPress={handleSwitchInputMode}>
+          <TouchableOpacity
+            style={styles.switchButton}
+            onPress={handleSwitchInputMode}
+          >
             <Text style={styles.buttonText}>Switch Input</Text>
           </TouchableOpacity>
         </View>
@@ -99,21 +113,26 @@ const GameScreenWithInput: React.FC = () => {
         {/* Game Controls */}
         <View style={styles.controlsContainer}>
           {!gameStarted ? (
-            <TouchableOpacity style={styles.startButton} onPress={handleStartGame}>
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={handleStartGame}
+            >
               <Text style={styles.buttonText}>Start Game</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.stopButton} onPress={handleStopGame}>
+            <TouchableOpacity
+              style={styles.stopButton}
+              onPress={handleStopGame}
+            >
               <Text style={styles.buttonText}>Stop Game</Text>
             </TouchableOpacity>
           )}
         </View>
 
         <Text style={styles.instruction}>
-          {gameStarted 
+          {gameStarted
             ? `Use ${settings.inputMode === 'touchZones' ? 'touch zones' : 'virtual joystick'} to control the car!`
-            : 'Press Start Game to begin the racing simulation'
-          }
+            : 'Press Start Game to begin the racing simulation'}
         </Text>
 
         {/* Input Mode Instructions */}
@@ -121,14 +140,24 @@ const GameScreenWithInput: React.FC = () => {
           {settings.inputMode === 'touchZones' ? (
             <>
               <Text style={styles.instructionTitle}>Touch Zones Mode:</Text>
-              <Text style={styles.instructionText}>• Left half of screen: Steer Left</Text>
-              <Text style={styles.instructionText}>• Right half of screen: Steer Right</Text>
-              <Text style={styles.instructionText}>• Blue button (bottom-right): Brake</Text>
+              <Text style={styles.instructionText}>
+                • Left half of screen: Steer Left
+              </Text>
+              <Text style={styles.instructionText}>
+                • Right half of screen: Steer Right
+              </Text>
+              <Text style={styles.instructionText}>
+                • Blue button (bottom-right): Brake
+              </Text>
             </>
           ) : (
             <>
-              <Text style={styles.instructionTitle}>Virtual Joystick Mode:</Text>
-              <Text style={styles.instructionText}>• Drag left/right: Steer</Text>
+              <Text style={styles.instructionTitle}>
+                Virtual Joystick Mode:
+              </Text>
+              <Text style={styles.instructionText}>
+                • Drag left/right: Steer
+              </Text>
               <Text style={styles.instructionText}>• Drag up: Accelerate</Text>
               <Text style={styles.instructionText}>• Drag down: Brake</Text>
             </>

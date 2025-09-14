@@ -1,6 +1,12 @@
 export interface TrackZone {
   id: string;
-  type: 'asphalt' | 'grass' | 'barrier' | 'startLine' | 'checkpoint' | 'finishLine';
+  type:
+    | 'asphalt'
+    | 'grass'
+    | 'barrier'
+    | 'startLine'
+    | 'checkpoint'
+    | 'finishLine';
   name: string;
   color: string;
   properties: {
@@ -65,7 +71,10 @@ export class Track {
   /**
    * Get surface properties at a specific position
    */
-  getSurfaceAt(x: number, y: number): {
+  getSurfaceAt(
+    x: number,
+    y: number
+  ): {
     type: string;
     friction: number;
     grip: number;
@@ -119,8 +128,17 @@ export class Track {
   /**
    * Check if point is inside a rectangle
    */
-  private isPointInRectangle(x: number, y: number, geometry: TrackZone['geometry']): boolean {
-    if (geometry.type !== 'rectangle' || !geometry.width || !geometry.height || geometry.points.length === 0) {
+  private isPointInRectangle(
+    x: number,
+    y: number,
+    geometry: TrackZone['geometry']
+  ): boolean {
+    if (
+      geometry.type !== 'rectangle' ||
+      !geometry.width ||
+      !geometry.height ||
+      geometry.points.length === 0
+    ) {
       return false;
     }
 
@@ -136,8 +154,16 @@ export class Track {
   /**
    * Check if point is inside a circle
    */
-  private isPointInCircle(x: number, y: number, geometry: TrackZone['geometry']): boolean {
-    if (geometry.type !== 'circle' || !geometry.radius || geometry.points.length === 0) {
+  private isPointInCircle(
+    x: number,
+    y: number,
+    geometry: TrackZone['geometry']
+  ): boolean {
+    if (
+      geometry.type !== 'circle' ||
+      !geometry.radius ||
+      geometry.points.length === 0
+    ) {
       return false;
     }
 
@@ -154,7 +180,11 @@ export class Track {
   /**
    * Check if point is inside a polygon using ray casting algorithm
    */
-  private isPointInPolygon(x: number, y: number, geometry: TrackZone['geometry']): boolean {
+  private isPointInPolygon(
+    x: number,
+    y: number,
+    geometry: TrackZone['geometry']
+  ): boolean {
     if (geometry.type !== 'polygon' || geometry.points.length < 3) {
       return false;
     }
@@ -165,7 +195,7 @@ export class Track {
     for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
       const pointI = points[i];
       const pointJ = points[j];
-      
+
       if (!pointI || !pointJ) continue;
 
       const xi = pointI.x;
@@ -173,7 +203,7 @@ export class Track {
       const xj = pointJ.x;
       const yj = pointJ.y;
 
-      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
         inside = !inside;
       }
     }
@@ -256,15 +286,18 @@ export class Track {
    * Get all collidable zones at a position
    */
   getCollidableZonesAt(x: number, y: number): TrackZone[] {
-    return this.data.zones.filter(zone => 
-      zone.properties.isCollidable && this.isPointInZone(x, y, zone)
+    return this.data.zones.filter(
+      zone => zone.properties.isCollidable && this.isPointInZone(x, y, zone)
     );
   }
 
   /**
    * Get checkpoint at position (if any)
    */
-  getCheckpointAt(x: number, y: number): {
+  getCheckpointAt(
+    x: number,
+    y: number
+  ): {
     id: string;
     position: { x: number; y: number };
     radius: number;
@@ -272,15 +305,15 @@ export class Track {
   } | null {
     for (const checkpoint of this.data.checkpoints) {
       const distance = Math.sqrt(
-        Math.pow(x - checkpoint.position.x, 2) + 
-        Math.pow(y - checkpoint.position.y, 2)
+        Math.pow(x - checkpoint.position.x, 2) +
+          Math.pow(y - checkpoint.position.y, 2)
       );
-      
+
       if (distance <= checkpoint.radius) {
         return checkpoint;
       }
     }
-    
+
     return null;
   }
 }

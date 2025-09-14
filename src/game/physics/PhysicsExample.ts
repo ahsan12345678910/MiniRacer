@@ -1,4 +1,9 @@
-import { CarModel, CarControls, SURFACE_TYPES, createCarPreset } from './CarModel';
+import {
+  CarModel,
+  CarControls,
+  SURFACE_TYPES,
+  createCarPreset,
+} from './CarModel';
 
 /**
  * Example of how to use the CarModel with the game loop
@@ -49,7 +54,9 @@ export class PhysicsExample {
   /**
    * Example of different surface types
    */
-  switchToSurface(surfaceType: 'asphalt' | 'grass' | 'dirt' | 'ice' | 'sand'): void {
+  switchToSurface(
+    surfaceType: 'asphalt' | 'grass' | 'dirt' | 'ice' | 'sand'
+  ): void {
     // In a real game, you'd use this to determine surface properties
     console.log(`Switched to ${surfaceType} surface`);
   }
@@ -59,7 +66,11 @@ export class PhysicsExample {
    */
   switchCarType(carType: 'sports' | 'rally' | 'truck' | 'formula'): void {
     const currentState = this.car.getState();
-    this.car = createCarPreset(carType, currentState.position, currentState.angle);
+    this.car = createCarPreset(
+      carType,
+      currentState.position,
+      currentState.angle
+    );
     console.log(`Switched to ${carType} car`);
   }
 }
@@ -73,7 +84,7 @@ export const createPhysicsExample = () => {
   // Example game loop integration
   const gameLoop = (deltaTime: number) => {
     physics.update(deltaTime);
-    
+
     // Get updated car state
     const carState = physics.getCarState();
     console.log('Car position:', carState.position);

@@ -57,7 +57,7 @@ lapSystem.setEvents(lapEvents);
 function update(deltaTime: number) {
   // Update car physics
   car.update(deltaTime, controls, surface);
-  
+
   // Update lap system
   lapSystem.update(car, deltaTime);
 }
@@ -77,6 +77,7 @@ import { LapHUD } from '../ui/LapHUD';
 ### LapSystem Class
 
 #### Constructor
+
 ```typescript
 new LapSystem(track: Track, totalLaps: number = 3)
 ```

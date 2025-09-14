@@ -7,7 +7,11 @@ interface TextProps {
   variant?: 'title' | 'subtitle' | 'body' | 'caption';
 }
 
-export const Text: React.FC<TextProps> = ({ children, style, variant = 'body' }) => {
+export const Text: React.FC<TextProps> = ({
+  children,
+  style,
+  variant = 'body',
+}) => {
   return <RNText style={[styles[variant], style]}>{children}</RNText>;
 };
 

@@ -1,4 +1,9 @@
-import { CarModel, CarControls, SURFACE_TYPES, createCarPreset } from './CarModel';
+import {
+  CarModel,
+  CarControls,
+  SURFACE_TYPES,
+  createCarPreset,
+} from './CarModel';
 import { useGameStore } from '../store/GameStore';
 
 /**
@@ -32,8 +37,12 @@ export class PhysicsIntegration {
     const carState = this.car.getState();
 
     // Update the game store with new car state
-    useGameStore.getState().setCarPosition(carState.position.x, carState.position.y);
-    useGameStore.getState().setCarVelocity(carState.velocity.x, carState.velocity.y);
+    useGameStore
+      .getState()
+      .setCarPosition(carState.position.x, carState.position.y);
+    useGameStore
+      .getState()
+      .setCarVelocity(carState.velocity.x, carState.velocity.y);
     useGameStore.getState().setCarAngle(carState.angle);
   }
 
@@ -56,7 +65,7 @@ export class PhysicsIntegration {
    */
   resetToStart(startPosition: { x: number; y: number } = { x: 0, y: 0 }): void {
     this.car.resetToStart(startPosition, 0);
-    
+
     // Also reset the game store
     useGameStore.getState().setCarPosition(startPosition.x, startPosition.y);
     useGameStore.getState().setCarVelocity(0, 0);
@@ -68,11 +77,19 @@ export class PhysicsIntegration {
    */
   switchCarType(carType: 'sports' | 'rally' | 'truck' | 'formula'): void {
     const currentState = this.car.getState();
-    this.car = createCarPreset(carType, currentState.position, currentState.angle);
-    
+    this.car = createCarPreset(
+      carType,
+      currentState.position,
+      currentState.angle
+    );
+
     // Update store with new car state
-    useGameStore.getState().setCarPosition(currentState.position.x, currentState.position.y);
-    useGameStore.getState().setCarVelocity(currentState.velocity.x, currentState.velocity.y);
+    useGameStore
+      .getState()
+      .setCarPosition(currentState.position.x, currentState.position.y);
+    useGameStore
+      .getState()
+      .setCarVelocity(currentState.velocity.x, currentState.velocity.y);
     useGameStore.getState().setCarAngle(currentState.angle);
   }
 
@@ -93,14 +110,16 @@ export class PhysicsIntegration {
   /**
    * Update car parameters
    */
-  updateCarParameters(parameters: Partial<{
-    maxSpeed: number;
-    acceleration: number;
-    brakePower: number;
-    friction: number;
-    turnRate: number;
-    mass: number;
-  }>): void {
+  updateCarParameters(
+    parameters: Partial<{
+      maxSpeed: number;
+      acceleration: number;
+      brakePower: number;
+      friction: number;
+      turnRate: number;
+      mass: number;
+    }>
+  ): void {
     this.car.updateParameters(parameters);
   }
 }

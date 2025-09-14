@@ -7,7 +7,8 @@ import { InputComponents } from '../game/input/InputComponents';
 import { Button } from '../ui/Button';
 
 export const GameScreenWithLaps: React.FC = () => {
-  const [gameIntegration, setGameIntegration] = useState<GameIntegration | null>(null);
+  const [gameIntegration, setGameIntegration] =
+    useState<GameIntegration | null>(null);
   const [lapSystem, setLapSystem] = useState<LapSystem | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const gameLoopRef = useRef<number | null>(null);
@@ -25,13 +26,18 @@ export const GameScreenWithLaps: React.FC = () => {
   const initializeGame = async () => {
     try {
       const game = new GameIntegration();
-      
+
       // Set up lap system events
       const lapEvents = {
         onLapComplete: (lapTime: LapTime) => {
-          console.log(`Lap ${lapTime.lapNumber} completed in ${lapTime.time}ms`);
+          console.log(
+            `Lap ${lapTime.lapNumber} completed in ${lapTime.time}ms`
+          );
           if (lapTime.isBestLap) {
-            Alert.alert('New Best Lap!', `Lap ${lapTime.lapNumber}: ${formatTime(lapTime.time)}`);
+            Alert.alert(
+              'New Best Lap!',
+              `Lap ${lapTime.lapNumber}: ${formatTime(lapTime.time)}`
+            );
           }
         },
         onBestLap: (lapTime: LapTime) => {
@@ -46,16 +52,18 @@ export const GameScreenWithLaps: React.FC = () => {
           Alert.alert('Race Finished!', 'Congratulations!');
         },
         onStartLineCross: (isForward: boolean) => {
-          console.log(`Start line crossed: ${isForward ? 'forward' : 'backward'}`);
+          console.log(
+            `Start line crossed: ${isForward ? 'forward' : 'backward'}`
+          );
         },
       };
 
       await game.initialize(lapEvents);
-      
+
       setGameIntegration(game);
       setLapSystem(game.getLapSystem());
       setIsInitialized(true);
-      
+
       // Start game loop
       startGameLoop(game);
     } catch (error) {
@@ -89,7 +97,7 @@ export const GameScreenWithLaps: React.FC = () => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
   };
 
-  const handleControlsChange = (controls: any) => {
+  const handleControlsChange = (controls: Record<string, unknown>) => {
     if (gameIntegration) {
       gameIntegration.setControls(controls);
     }
@@ -116,7 +124,7 @@ export const GameScreenWithLaps: React.FC = () => {
     <View style={styles.container}>
       {/* Game HUD */}
       <LapHUD lapSystem={lapSystem} style={styles.hud} />
-      
+
       {/* Input Controls */}
       <View style={styles.controlsContainer}>
         <InputComponents

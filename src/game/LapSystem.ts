@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CarModel, CarPhysicsState } from './physics/CarModel';
-import { Track, TrackZone } from './track/Track';
+import { Track } from './track/Track';
 
 export interface LapTime {
   lapNumber: number;
@@ -68,15 +68,17 @@ export class LapSystem {
    * Initialize start line detection zone from track data
    */
   private initializeStartLine(): void {
-    const startLineZones = this.track.getZones().filter(zone => zone.type === 'startLine');
-    
+    const startLineZones = this.track
+      .getZones()
+      .filter(zone => zone.type === 'startLine');
+
     if (startLineZones.length > 0) {
       const startLineZone = startLineZones[0];
       if (startLineZone && startLineZone.geometry.type === 'rectangle') {
         const points = startLineZone.geometry.points;
         const width = startLineZone.geometry.width || 0;
         const height = startLineZone.geometry.height || 0;
-        
+
         if (points.length > 0) {
           this.startLineZone = {
             id: startLineZone.id,
@@ -105,7 +107,10 @@ export class LapSystem {
   /**
    * Calculate the forward direction vector for the start line
    */
-  private calculateStartLineDirection(zone: TrackZone): { x: number; y: number } {
+  private calculateStartLineDirection(): {
+    x: number;
+    y: number;
+  } {
     // For now, use a default direction based on track start angle
     const startAngle = this.track.getStartPosition().angle;
     return {
@@ -117,7 +122,7 @@ export class LapSystem {
   /**
    * Update lap system with current car state
    */
-  update(car: CarModel, deltaTime: number): void {
+  update(car: CarModel): void {
     if (!this.startLineZone) return;
 
     const carState = car.getState();
@@ -140,8 +145,11 @@ export class LapSystem {
     const { position: linePos, width, height } = this.startLineZone;
 
     // Check if car is within the start line zone
-    const isInZone = x >= linePos.x && x <= linePos.x + width &&
-                     y >= linePos.y && y <= linePos.y + height;
+    const isInZone =
+      x >= linePos.x &&
+      x <= linePos.x + width &&
+      y >= linePos.y &&
+      y <= linePos.y + height;
 
     return isInZone;
   }
@@ -149,8 +157,11 @@ export class LapSystem {
   /**
    * Handle start line crossing detection
    */
-  private handleStartLineCrossing(carState: CarPhysicsState, currentTime: number): void {
-    const { position, velocity } = carState;
+  private handleStartLineCrossing(
+    carState: CarPhysicsState,
+    currentTime: number
+  ): void {
+    const { velocity } = carState;
     const { direction } = this.startLineZone!;
 
     // Calculate car's movement direction
@@ -160,7 +171,9 @@ export class LapSystem {
     };
 
     // Normalize car direction
-    const speed = Math.sqrt(carDirection.x * carDirection.x + carDirection.y * carDirection.y);
+    const speed = Math.sqrt(
+      carDirection.x * carDirection.x + carDirection.y * carDirection.y
+    );
     if (speed < 0.1) return; // Car is too slow to determine direction
 
     const normalizedCarDirection = {
@@ -169,11 +182,16 @@ export class LapSystem {
     };
 
     // Calculate dot product to determine if moving forward
-    const dotProduct = normalizedCarDirection.x * direction.x + normalizedCarDirection.y * direction.y;
+    const dotProduct =
+      normalizedCarDirection.x * direction.x +
+      normalizedCarDirection.y * direction.y;
     const isForward = dotProduct > 0.3; // Threshold for forward movement
 
     // Cooldown to prevent multiple rapid crossings
-    if (currentTime - this.state.lastStartLineCrossing < this.START_LINE_CROSSING_COOLDOWN) {
+    if (
+      currentTime - this.state.lastStartLineCrossing <
+      this.START_LINE_CROSSING_COOLDOWN
+    ) {
       return;
     }
 
@@ -204,7 +222,7 @@ export class LapSystem {
     // Check if this is a valid lap completion
     if (this.state.hasCrossedStartLine && this.state.currentLapStartTime > 0) {
       const lapTime = currentTime - this.state.currentLapStartTime;
-      
+
       if (lapTime >= this.MIN_LAP_TIME) {
         this.completeLap(lapTime, currentTime);
       }
@@ -369,8 +387,11 @@ export class LapSystem {
    */
   getAverageLapTime(): number {
     if (this.state.lapTimes.length === 0) return 0;
-    
-    const totalTime = this.state.lapTimes.reduce((sum, lap) => sum + lap.time, 0);
+
+    const totalTime = this.state.lapTimes.reduce(
+      (sum, lap) => sum + lap.time,
+      0
+    );
     return totalTime / this.state.lapTimes.length;
   }
 
@@ -415,7 +436,10 @@ export class LapSystem {
     isRaceFinished: boolean;
   } {
     const completedLaps = this.state.lapTimes.length;
-    const totalRaceTime = this.state.lapTimes.reduce((sum, lap) => sum + lap.time, 0);
+    const totalRaceTime = this.state.lapTimes.reduce(
+      (sum, lap) => sum + lap.time,
+      0
+    );
 
     return {
       totalLaps: this.state.totalLaps,

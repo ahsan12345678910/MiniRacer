@@ -45,30 +45,30 @@ export class TrackLoader {
    */
   private async loadTrackData(trackId: string): Promise<TrackData> {
     const filePath = `${this.basePath}${trackId}.json`;
-    
+
     try {
       // In a real React Native app, you would use a different method to load JSON
       // For now, we'll use a dynamic import approach
       const response = await fetch(filePath);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const trackData: TrackData = await response.json();
-      
+
       // Validate track data
       this.validateTrackData(trackData);
-      
+
       return trackData;
     } catch (error) {
       console.error(`Error loading track data from ${filePath}:`, error);
-      
+
       // Fallback to default track if loading fails
       if (trackId === 'default') {
         return this.getDefaultTrackData();
       }
-      
+
       throw error;
     }
   }
@@ -76,12 +76,14 @@ export class TrackLoader {
   /**
    * Validate track data structure
    */
-  private validateTrackData(data: any): asserts data is TrackData {
+  private validateTrackData(data: unknown): asserts data is TrackData {
     const requiredFields = ['id', 'name', 'zones', 'startPosition'];
-    
+
     for (const field of requiredFields) {
       if (!(field in data)) {
-        throw new Error(`Invalid track data: missing required field '${field}'`);
+        throw new Error(
+          `Invalid track data: missing required field '${field}'`
+        );
       }
     }
 
@@ -90,7 +92,9 @@ export class TrackLoader {
     }
 
     if (!data.startPosition.x || !data.startPosition.y) {
-      throw new Error('Invalid track data: startPosition must have x and y coordinates');
+      throw new Error(
+        'Invalid track data: startPosition must have x and y coordinates'
+      );
     }
   }
 
@@ -222,8 +226,8 @@ export class TrackLoader {
    */
   async loadTracks(trackIds: string[]): Promise<Map<string, Track>> {
     const tracks = new Map<string, Track>();
-    
-    const loadPromises = trackIds.map(async (trackId) => {
+
+    const loadPromises = trackIds.map(async trackId => {
       try {
         const track = await this.loadTrack(trackId);
         tracks.set(trackId, track);

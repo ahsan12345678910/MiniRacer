@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Switch, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Switch,
   Alert,
-  ScrollView 
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGameStore } from '../game/store/GameStore';
+import { useClickSound } from '../audio/useAudio';
 
 const SETTINGS_STORAGE_KEY = 'race_game_settings';
 const BEST_LAP_STORAGE_KEY = 'race_game_best_lap';
@@ -34,7 +35,8 @@ interface GameSettings {
 const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { settings, updateSettings } = useGameStore();
-  
+  const { playClickSound } = useClickSound();
+
   const [localSettings, setLocalSettings] = useState<GameSettings>(settings);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -59,7 +61,10 @@ const SettingsScreen: React.FC = () => {
 
   const saveSettings = async (newSettings: GameSettings) => {
     try {
-      await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
+      await AsyncStorage.setItem(
+        SETTINGS_STORAGE_KEY,
+        JSON.stringify(newSettings)
+      );
       setLocalSettings(newSettings);
       updateSettings(newSettings);
     } catch (error) {
@@ -69,28 +74,32 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleInputModeChange = (mode: 'touchZones' | 'virtualJoystick') => {
+    playClickSound();
     const newSettings = { ...localSettings, inputMode: mode };
     saveSettings(newSettings);
   };
 
   const handleSoundToggle = (enabled: boolean) => {
+    playClickSound();
     const newSettings = { ...localSettings, soundEnabled: enabled };
     saveSettings(newSettings);
   };
 
   const handleMusicToggle = (enabled: boolean) => {
+    playClickSound();
     const newSettings = { ...localSettings, musicEnabled: enabled };
     saveSettings(newSettings);
   };
 
   const handleResetBestLap = () => {
+    playClickSound();
     Alert.alert(
       'Reset Best Lap',
       'Are you sure you want to reset your best lap time? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Reset', 
+        {
+          text: 'Reset',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -100,20 +109,21 @@ const SettingsScreen: React.FC = () => {
               console.error('Failed to reset best lap:', error);
               Alert.alert('Error', 'Failed to reset best lap time');
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
   const handleResetAllSettings = () => {
+    playClickSound();
     Alert.alert(
       'Reset All Settings',
       'Are you sure you want to reset all settings to default values?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Reset', 
+        {
+          text: 'Reset',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -132,7 +142,10 @@ const SettingsScreen: React.FC = () => {
                   position: 'left',
                 },
               };
-              await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultSettings));
+              await AsyncStorage.setItem(
+                SETTINGS_STORAGE_KEY,
+                JSON.stringify(defaultSettings)
+              );
               setLocalSettings(defaultSettings);
               updateSettings(defaultSettings);
               Alert.alert('Success', 'All settings have been reset to default');
@@ -140,8 +153,8 @@ const SettingsScreen: React.FC = () => {
               console.error('Failed to reset settings:', error);
               Alert.alert('Error', 'Failed to reset settings');
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -176,12 +189,15 @@ const SettingsScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.title}>Settings</Text>
       </View>
-      
-      <ScrollView style={styles.settingsContainer} showsVerticalScrollIndicator={false}>
+
+      <ScrollView
+        style={styles.settingsContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Control Mode Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Controls</Text>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>Control Mode</Text>
@@ -193,28 +209,36 @@ const SettingsScreen: React.FC = () => {
               <TouchableOpacity
                 style={[
                   styles.controlModeButton,
-                  localSettings.inputMode === 'touchZones' && styles.controlModeButtonActive
+                  localSettings.inputMode === 'touchZones' &&
+                    styles.controlModeButtonActive,
                 ]}
                 onPress={() => handleInputModeChange('touchZones')}
               >
-                <Text style={[
-                  styles.controlModeButtonText,
-                  localSettings.inputMode === 'touchZones' && styles.controlModeButtonTextActive
-                ]}>
+                <Text
+                  style={[
+                    styles.controlModeButtonText,
+                    localSettings.inputMode === 'touchZones' &&
+                      styles.controlModeButtonTextActive,
+                  ]}
+                >
                   Touch Zones
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.controlModeButton,
-                  localSettings.inputMode === 'virtualJoystick' && styles.controlModeButtonActive
+                  localSettings.inputMode === 'virtualJoystick' &&
+                    styles.controlModeButtonActive,
                 ]}
                 onPress={() => handleInputModeChange('virtualJoystick')}
               >
-                <Text style={[
-                  styles.controlModeButtonText,
-                  localSettings.inputMode === 'virtualJoystick' && styles.controlModeButtonTextActive
-                ]}>
+                <Text
+                  style={[
+                    styles.controlModeButtonText,
+                    localSettings.inputMode === 'virtualJoystick' &&
+                      styles.controlModeButtonTextActive,
+                  ]}
+                >
                   Virtual Joystick
                 </Text>
               </TouchableOpacity>
@@ -225,7 +249,7 @@ const SettingsScreen: React.FC = () => {
         {/* Audio Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Audio</Text>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>Sound Effects</Text>
@@ -240,7 +264,7 @@ const SettingsScreen: React.FC = () => {
               thumbColor={localSettings.soundEnabled ? '#f5dd4b' : '#f4f3f4'}
             />
           </View>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>Background Music</Text>
@@ -260,15 +284,21 @@ const SettingsScreen: React.FC = () => {
         {/* Data Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data</Text>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={handleResetBestLap}>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleResetBestLap}
+          >
             <Text style={styles.actionButtonText}>Reset Best Lap Time</Text>
             <Text style={styles.actionButtonDescription}>
               Clear your personal best lap record
             </Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={handleResetAllSettings}>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleResetAllSettings}
+          >
             <Text style={styles.actionButtonText}>Reset All Settings</Text>
             <Text style={styles.actionButtonDescription}>
               Restore all settings to default values

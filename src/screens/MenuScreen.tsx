@@ -1,15 +1,32 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useClickSound } from '../audio/useAudio';
 
 const MenuScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { playClickSound } = useClickSound();
+
+  const handlePlay = () => {
+    playClickSound();
+    navigation.navigate('Game' as never);
+  };
+
+  const handleSettings = () => {
+    playClickSound();
+    navigation.navigate('Settings' as never);
+  };
 
   const handleQuit = () => {
+    playClickSound();
     console.log('Quit button pressed');
     Alert.alert('Quit Game', 'Are you sure you want to quit?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Quit', style: 'destructive', onPress: () => console.log('Game quit confirmed') },
+      {
+        text: 'Quit',
+        style: 'destructive',
+        onPress: () => console.log('Game quit confirmed'),
+      },
     ]);
   };
 
@@ -17,16 +34,10 @@ const MenuScreen: React.FC = () => {
     <View style={styles.container}>
       <Text style={styles.title}>MiniRacer</Text>
       <View style={styles.menuContainer}>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.navigate('Game' as never)}
-        >
+        <TouchableOpacity style={styles.menuButton} onPress={handlePlay}>
           <Text style={styles.buttonText}>Play</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.navigate('Settings' as never)}
-        >
+        <TouchableOpacity style={styles.menuButton} onPress={handleSettings}>
           <Text style={styles.buttonText}>Settings</Text>
         </TouchableOpacity>
         <TouchableOpacity

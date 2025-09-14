@@ -1,47 +1,54 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   Dimensions,
   PanResponder,
-  Animated
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useGameStore } from '../game/store/GameStore';
 import { GameIntegration } from '../game/GameIntegration';
 import { LapSystem } from '../game/LapSystem';
+import { useAudio } from '../audio/useAudio';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GameScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { 
-    car, 
-    lapData, 
-    isGameRunning, 
+  const {
+    car,
+    lapData,
     isPaused,
     settings,
-    startGame, 
-    pauseGame, 
+    startGame,
+    pauseGame,
     resumeGame,
-    setCarPosition,
-    setCarVelocity,
-    setCarAngle,
     accelerate,
     brake,
-    turn
+    turn,
   } = useGameStore();
 
-  const [gameIntegration, setGameIntegration] = useState<GameIntegration | null>(null);
-  const [lapSystem, setLapSystem] = useState<LapSystem | null>(null);
+  const [gameIntegration, setGameIntegration] =
+    useState<GameIntegration | null>(null);
+  const [, setLapSystem] = useState<LapSystem | null>(null);
   const [joystickPosition, setJoystickPosition] = useState({ x: 0, y: 0 });
   const [isJoystickActive, setIsJoystickActive] = useState(false);
   const gameLoopRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
   const carPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const carRotation = useRef(new Animated.Value(0)).current;
+
+  // Audio system
+  const { playClickSound, pauseAllAudio, resumeAllAudio } = useAudio();
 
   // Initialize game
   useEffect(() => {
@@ -63,11 +70,11 @@ const GameScreen: React.FC = () => {
     try {
       const game = new GameIntegration();
       await game.initialize();
-      
+
       setGameIntegration(game);
       setLapSystem(game.getLapSystem());
       startGame();
-      
+
       // Start game loop
       startGameLoop();
     } catch (error) {
@@ -85,7 +92,7 @@ const GameScreen: React.FC = () => {
         if (gameIntegration) {
           gameIntegration.update(deltaTime);
         }
-        
+
         // Update game store
         useGameStore.getState().update(deltaTime);
       }
@@ -101,20 +108,20 @@ const GameScreen: React.FC = () => {
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (evt) => {
+    onPanResponderGrant: evt => {
       const { locationX, locationY } = evt.nativeEvent;
       if (settings.inputMode === 'virtualJoystick') {
         setIsJoystickActive(true);
         setJoystickPosition({ x: locationX, y: locationY });
       }
-      handleTouchInput(locationX, locationY, true);
+      handleTouchInput(locationX, locationY);
     },
-    onPanResponderMove: (evt) => {
+    onPanResponderMove: evt => {
       const { locationX, locationY } = evt.nativeEvent;
       if (settings.inputMode === 'virtualJoystick') {
         setJoystickPosition({ x: locationX, y: locationY });
       }
-      handleTouchInput(locationX, locationY, false);
+      handleTouchInput(locationX, locationY);
     },
     onPanResponderRelease: () => {
       // Stop all inputs
@@ -128,75 +135,123 @@ const GameScreen: React.FC = () => {
     },
   });
 
-  const handleTouchInput = (x: number, y: number, isStart: boolean) => {
-    const centerX = screenWidth / 2;
-    const centerY = screenHeight / 2;
-    
-    // Apply settings-based control mode
-    if (settings.inputMode === 'touchZones') {
-      // Touch zones mode - left side for steering, right side for acceleration
-      if (x < centerX) {
-        // Left side - steering
-        const steerAmount = (centerX - x) / centerX;
-        turn(steerAmount * 0.1);
-      } else {
-        // Right side - acceleration
-        const accelAmount = (x - centerX) / centerX;
-        if (accelAmount > 0.3) {
-          accelerate(accelAmount * 100);
-        } else if (accelAmount < -0.3) {
-          brake(Math.abs(accelAmount) * 100);
-        }
-      }
-    } else {
-      // Virtual joystick mode - different control scheme
-      const deltaX = x - centerX;
-      const deltaY = y - centerY;
-      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-      
-      if (distance > settings.virtualJoystick.deadZone) {
-        // Steering based on horizontal movement
-        const steerAmount = Math.max(-1, Math.min(1, deltaX / (screenWidth * 0.3)));
-        turn(steerAmount * 0.1);
-        
-        // Acceleration based on vertical movement
-        const accelAmount = Math.max(-1, Math.min(1, -deltaY / (screenHeight * 0.3)));
-        if (accelAmount > 0.1) {
-          accelerate(accelAmount * 100);
-        } else if (accelAmount < -0.1) {
-          brake(Math.abs(accelAmount) * 100);
-        }
-      }
-    }
-  };
+  const handleTouchInput = useCallback(
+    (x: number, y: number) => {
+      const centerX = screenWidth / 2;
+      const centerY = screenHeight / 2;
 
-  const handlePause = () => {
+      // Apply settings-based control mode
+      if (settings.inputMode === 'touchZones') {
+        // Touch zones mode - left side for steering, right side for acceleration
+        if (x < centerX) {
+          // Left side - steering
+          const steerAmount = (centerX - x) / centerX;
+          turn(steerAmount * 0.1);
+        } else {
+          // Right side - acceleration
+          const accelAmount = (x - centerX) / centerX;
+          if (accelAmount > 0.3) {
+            accelerate(accelAmount * 100);
+          } else if (accelAmount < -0.3) {
+            brake(Math.abs(accelAmount) * 100);
+          }
+        }
+      } else {
+        // Virtual joystick mode - different control scheme
+        const deltaX = x - centerX;
+        const deltaY = y - centerY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        if (distance > settings.virtualJoystick.deadZone) {
+          // Steering based on horizontal movement
+          const steerAmount = Math.max(
+            -1,
+            Math.min(1, deltaX / (screenWidth * 0.3))
+          );
+          turn(steerAmount * 0.1);
+
+          // Acceleration based on vertical movement
+          const accelAmount = Math.max(
+            -1,
+            Math.min(1, -deltaY / (screenHeight * 0.3))
+          );
+          if (accelAmount > 0.1) {
+            accelerate(accelAmount * 100);
+          } else if (accelAmount < -0.1) {
+            brake(Math.abs(accelAmount) * 100);
+          }
+        }
+      }
+    },
+    [
+      settings.inputMode,
+      settings.virtualJoystick.deadZone,
+      turn,
+      accelerate,
+      brake,
+    ]
+  );
+
+  const handlePause = useCallback(() => {
     if (isPaused) {
       resumeGame();
+      resumeAllAudio();
     } else {
       pauseGame();
+      pauseAllAudio();
     }
-  };
+    playClickSound();
+  }, [
+    isPaused,
+    resumeGame,
+    pauseGame,
+    resumeAllAudio,
+    pauseAllAudio,
+    playClickSound,
+  ]);
 
-  const handleBackToMenu = () => {
+  const handleBackToMenu = useCallback(() => {
     pauseGame();
+    pauseAllAudio();
+    playClickSound();
     navigation.navigate('Menu' as never);
-  };
+  }, [pauseGame, pauseAllAudio, playClickSound, navigation]);
 
-  const formatTime = (timeMs: number): string => {
+  const formatTime = useCallback((timeMs: number): string => {
     const totalSeconds = Math.floor(timeMs / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     const milliseconds = Math.floor((timeMs % 1000) / 10);
 
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
-  };
+  }, []);
 
-  const formatSpeed = (speed: number): string => {
+  const formatSpeed = useCallback((speed: number): string => {
     // Convert game units to km/h (assuming 1 game unit = 1 meter)
     const kmh = (speed * 3.6).toFixed(0);
     return `${kmh} km/h`;
-  };
+  }, []);
+
+  // Memoize expensive calculations
+  const currentLapTimeFormatted = useMemo(
+    () => formatTime(lapData.currentLapTime),
+    [lapData.currentLapTime, formatTime]
+  );
+  const bestLapTimeFormatted = useMemo(
+    () => (lapData.bestLapTime > 0 ? formatTime(lapData.bestLapTime) : ''),
+    [lapData.bestLapTime, formatTime]
+  );
+  const speedFormatted = useMemo(
+    () => formatSpeed(car.speed),
+    [car.speed, formatSpeed]
+  );
+  const controlHintText = useMemo(
+    () =>
+      settings.inputMode === 'touchZones'
+        ? 'Touch left side to steer, right side to accelerate'
+        : 'Touch and drag to control steering and acceleration',
+    [settings.inputMode]
+  );
 
   return (
     <View style={styles.container}>
@@ -204,15 +259,21 @@ const GameScreen: React.FC = () => {
       <View style={styles.trackBackground}>
         {/* Tiled track pattern */}
         {Array.from({ length: 20 }, (_, i) => (
-          <View key={i} style={[styles.trackTile, { 
-            left: (i % 5) * 80, 
-            top: Math.floor(i / 5) * 80 
-          }]} />
+          <View
+            key={i}
+            style={[
+              styles.trackTile,
+              {
+                left: (i % 5) * 80,
+                top: Math.floor(i / 5) * 80,
+              },
+            ]}
+          />
         ))}
-        
+
         {/* Track boundaries */}
         <View style={styles.trackBoundary} />
-        
+
         {/* Car */}
         <Animated.View
           style={[
@@ -221,10 +282,12 @@ const GameScreen: React.FC = () => {
               transform: [
                 { translateX: carPosition.x },
                 { translateY: carPosition.y },
-                { rotate: carRotation.interpolate({
-                  inputRange: [0, Math.PI * 2],
-                  outputRange: ['0deg', '360deg'],
-                }) },
+                {
+                  rotate: carRotation.interpolate({
+                    inputRange: [0, Math.PI * 2],
+                    outputRange: ['0deg', '360deg'],
+                  }),
+                },
               ],
             },
           ]}
@@ -236,19 +299,14 @@ const GameScreen: React.FC = () => {
         {/* Top HUD */}
         <View style={styles.topHud}>
           <View style={styles.hudLeft}>
-            <Text style={styles.speedText}>{formatSpeed(car.speed)}</Text>
+            <Text style={styles.speedText}>{speedFormatted}</Text>
             <Text style={styles.speedLabel}>SPEED</Text>
           </View>
-          
-          <TouchableOpacity
-            style={styles.pauseButton}
-            onPress={handlePause}
-          >
-            <Text style={styles.pauseButtonText}>
-              {isPaused ? '▶' : '⏸'}
-            </Text>
+
+          <TouchableOpacity style={styles.pauseButton} onPress={handlePause}>
+            <Text style={styles.pauseButtonText}>{isPaused ? '▶' : '⏸'}</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.menuButton}
             onPress={handleBackToMenu}
@@ -263,17 +321,13 @@ const GameScreen: React.FC = () => {
             <Text style={styles.lapCounter}>
               LAP {lapData.currentLap} / {lapData.totalLaps}
             </Text>
-            <Text style={styles.currentLapTime}>
-              {formatTime(lapData.currentLapTime)}
-            </Text>
+            <Text style={styles.currentLapTime}>{currentLapTimeFormatted}</Text>
           </View>
-          
+
           {lapData.bestLapTime > 0 && (
             <View style={styles.bestLapInfo}>
               <Text style={styles.bestLapLabel}>BEST LAP</Text>
-              <Text style={styles.bestLapTime}>
-                {formatTime(lapData.bestLapTime)}
-              </Text>
+              <Text style={styles.bestLapTime}>{bestLapTimeFormatted}</Text>
             </View>
           )}
         </View>
@@ -282,26 +336,31 @@ const GameScreen: React.FC = () => {
       {/* Virtual Joystick Visual */}
       {settings.inputMode === 'virtualJoystick' && isJoystickActive && (
         <View style={styles.joystickContainer}>
-          <View style={[styles.joystickBase, { 
-            left: joystickPosition.x - settings.virtualJoystick.size / 2,
-            top: joystickPosition.y - settings.virtualJoystick.size / 2,
-          }]} />
-          <View style={[styles.joystickKnob, { 
-            left: joystickPosition.x - 15,
-            top: joystickPosition.y - 15,
-          }]} />
+          <View
+            style={[
+              styles.joystickBase,
+              {
+                left: joystickPosition.x - settings.virtualJoystick.size / 2,
+                top: joystickPosition.y - settings.virtualJoystick.size / 2,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.joystickKnob,
+              {
+                left: joystickPosition.x - 15,
+                top: joystickPosition.y - 15,
+              },
+            ]}
+          />
         </View>
       )}
 
       {/* Touch Controls */}
       <View style={styles.touchControls} {...panResponder.panHandlers}>
         <View style={styles.controlHint}>
-          <Text style={styles.controlHintText}>
-            {settings.inputMode === 'touchZones' 
-              ? 'Touch left side to steer, right side to accelerate'
-              : 'Touch and drag to control steering and acceleration'
-            }
-          </Text>
+          <Text style={styles.controlHintText}>{controlHintText}</Text>
         </View>
       </View>
     </View>

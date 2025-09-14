@@ -6,9 +6,9 @@ export interface CarControls {
 }
 
 export interface SurfaceProperties {
-  friction: number;    // Surface friction coefficient (0-1)
-  grip: number;        // Surface grip coefficient (0-1)
-  roughness: number;   // Surface roughness affecting speed (0-1)
+  friction: number; // Surface friction coefficient (0-1)
+  grip: number; // Surface grip coefficient (0-1)
+  roughness: number; // Surface roughness affecting speed (0-1)
 }
 
 export interface CarPhysicsState {
@@ -20,17 +20,17 @@ export interface CarPhysicsState {
     x: number;
     y: number;
   };
-  angle: number;       // in radians
-  speed: number;       // magnitude of velocity
+  angle: number; // in radians
+  speed: number; // magnitude of velocity
 }
 
 export interface CarParameters {
-  maxSpeed: number;      // Maximum speed in units per second
-  acceleration: number;  // Acceleration force
-  brakePower: number;    // Braking force
-  friction: number;      // Air/rolling resistance
-  turnRate: number;      // Turning rate in radians per second
-  mass: number;          // Car mass for physics calculations
+  maxSpeed: number; // Maximum speed in units per second
+  acceleration: number; // Acceleration force
+  brakePower: number; // Braking force
+  friction: number; // Air/rolling resistance
+  turnRate: number; // Turning rate in radians per second
+  mass: number; // Car mass for physics calculations
 }
 
 export class CarModel {
@@ -63,12 +63,12 @@ export class CarModel {
     this.speed = 0;
 
     // Set car parameters with defaults
-    this.maxSpeed = parameters.maxSpeed ?? 200;        // 200 units/second
+    this.maxSpeed = parameters.maxSpeed ?? 200; // 200 units/second
     this.acceleration = parameters.acceleration ?? 150; // 150 units/second²
-    this.brakePower = parameters.brakePower ?? 300;     // 300 units/second²
-    this.friction = parameters.friction ?? 0.95;        // 5% speed loss per second
-    this.turnRate = parameters.turnRate ?? 3.0;         // 3 radians/second
-    this.mass = parameters.mass ?? 1.0;                 // 1 unit mass
+    this.brakePower = parameters.brakePower ?? 300; // 300 units/second²
+    this.friction = parameters.friction ?? 0.95; // 5% speed loss per second
+    this.turnRate = parameters.turnRate ?? 3.0; // 3 radians/second
+    this.mass = parameters.mass ?? 1.0; // 1 unit mass
   }
 
   /**
@@ -77,7 +77,11 @@ export class CarModel {
    * @param controls - Player input controls
    * @param surface - Surface properties affecting physics
    */
-  update(deltaTime: number, controls: CarControls, surface: SurfaceProperties): void {
+  update(
+    deltaTime: number,
+    controls: CarControls,
+    surface: SurfaceProperties
+  ): void {
     const dt = deltaTime / 1000; // Convert to seconds
 
     // Apply steering (affects angle)
@@ -119,7 +123,11 @@ export class CarModel {
   /**
    * Apply acceleration and braking forces
    */
-  private applyAcceleration(dt: number, controls: CarControls, surface: SurfaceProperties): void {
+  private applyAcceleration(
+    dt: number,
+    controls: CarControls,
+    surface: SurfaceProperties
+  ): void {
     let accelerationForce = 0;
 
     if (controls.accelerate) {
@@ -137,7 +145,10 @@ export class CarModel {
     this.speed += speedChange;
 
     // Clamp speed to maximum
-    this.speed = Math.max(0, Math.min(this.speed, this.maxSpeed * surface.roughness));
+    this.speed = Math.max(
+      0,
+      Math.min(this.speed, this.maxSpeed * surface.roughness)
+    );
   }
 
   /**
@@ -195,7 +206,10 @@ export class CarModel {
   /**
    * Reset car to starting position
    */
-  resetToStart(startPosition: { x: number; y: number }, startAngle: number = 0): void {
+  resetToStart(
+    startPosition: { x: number; y: number },
+    startAngle: number = 0
+  ): void {
     this.position = { ...startPosition };
     this.velocity = { x: 0, y: 0 };
     this.angle = startAngle;
@@ -232,8 +246,10 @@ export class CarModel {
    */
   updateParameters(newParams: Partial<CarParameters>): void {
     if (newParams.maxSpeed !== undefined) this.maxSpeed = newParams.maxSpeed;
-    if (newParams.acceleration !== undefined) this.acceleration = newParams.acceleration;
-    if (newParams.brakePower !== undefined) this.brakePower = newParams.brakePower;
+    if (newParams.acceleration !== undefined)
+      this.acceleration = newParams.acceleration;
+    if (newParams.brakePower !== undefined)
+      this.brakePower = newParams.brakePower;
     if (newParams.friction !== undefined) this.friction = newParams.friction;
     if (newParams.turnRate !== undefined) this.turnRate = newParams.turnRate;
     if (newParams.mass !== undefined) this.mass = newParams.mass;
@@ -242,9 +258,9 @@ export class CarModel {
 
 // Default surface properties
 export const DEFAULT_SURFACE: SurfaceProperties = {
-  friction: 0.95,    // 5% speed loss per second
-  grip: 1.0,         // Full grip
-  roughness: 1.0,    // No speed reduction
+  friction: 0.95, // 5% speed loss per second
+  grip: 1.0, // Full grip
+  roughness: 1.0, // No speed reduction
 };
 
 // Different surface types
@@ -254,25 +270,25 @@ export const SURFACE_TYPES = {
     grip: 1.0,
     roughness: 1.0,
   } as SurfaceProperties,
-  
+
   GRASS: {
     friction: 0.85,
     grip: 0.7,
     roughness: 0.8,
   } as SurfaceProperties,
-  
+
   DIRT: {
     friction: 0.9,
     grip: 0.8,
     roughness: 0.9,
   } as SurfaceProperties,
-  
+
   ICE: {
     friction: 0.98,
     grip: 0.3,
     roughness: 1.0,
   } as SurfaceProperties,
-  
+
   SAND: {
     friction: 0.8,
     grip: 0.6,

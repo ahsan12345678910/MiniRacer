@@ -1,6 +1,10 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { PanGestureHandler, State, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
+import {
+  PanGestureHandler,
+  State,
+  PanGestureHandlerGestureEvent,
+} from 'react-native-gesture-handler';
 import { InputIntegration } from './InputIntegration';
 
 interface InputControlsProps {
@@ -16,7 +20,7 @@ export const InputControls: React.FC<InputControlsProps> = ({
 }) => {
   const handleGestureEvent = (event: PanGestureHandlerGestureEvent) => {
     const { x, y } = event.nativeEvent;
-    
+
     switch (event.nativeEvent.state) {
       case State.BEGAN:
         inputIntegration.handleTouchStart(x, y);
@@ -32,7 +36,9 @@ export const InputControls: React.FC<InputControlsProps> = ({
   };
 
   return (
-    <View style={[styles.container, { width: screenWidth, height: screenHeight }]}>
+    <View
+      style={[styles.container, { width: screenWidth, height: screenHeight }]}
+    >
       <PanGestureHandler onGestureEvent={handleGestureEvent}>
         <View style={styles.gestureArea}>
           {inputIntegration.isTouchZonesMode() && (
@@ -54,7 +60,7 @@ const TouchZonesControls: React.FC<{ inputIntegration: InputIntegration }> = ({
 
   return (
     <>
-      {touchZones.map((zone) => (
+      {touchZones.map(zone => (
         <View
           key={zone.id}
           style={[
@@ -75,9 +81,9 @@ const TouchZonesControls: React.FC<{ inputIntegration: InputIntegration }> = ({
   );
 };
 
-const VirtualJoystickControls: React.FC<{ inputIntegration: InputIntegration }> = ({
-  inputIntegration,
-}) => {
+const VirtualJoystickControls: React.FC<{
+  inputIntegration: InputIntegration;
+}> = ({ inputIntegration }) => {
   const joystickState = inputIntegration.getVirtualJoystickState();
 
   return (
@@ -94,7 +100,7 @@ const VirtualJoystickControls: React.FC<{ inputIntegration: InputIntegration }> 
           },
         ]}
       />
-      
+
       {/* Joystick thumb */}
       <View
         style={[
@@ -159,8 +165,8 @@ export const useInputIntegration = (
   screenWidth: number,
   screenHeight: number
 ): InputIntegration => {
-  const [inputIntegration] = React.useState(() => 
-    new InputIntegration(screenWidth, screenHeight)
+  const [inputIntegration] = React.useState(
+    () => new InputIntegration(screenWidth, screenHeight)
   );
 
   React.useEffect(() => {

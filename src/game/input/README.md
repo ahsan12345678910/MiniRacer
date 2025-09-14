@@ -9,11 +9,13 @@ Core input management with support for multiple input modes.
 ### Input Modes
 
 #### 1. Touch Zones Mode
+
 - **Left Half Screen**: Steer left
-- **Right Half Screen**: Steer right  
+- **Right Half Screen**: Steer right
 - **Brake Button**: Bottom-right corner brake button
 
 #### 2. Virtual Joystick Mode
+
 - **Drag Left/Right**: Steer left/right
 - **Drag Up**: Accelerate
 - **Drag Down**: Brake
@@ -81,7 +83,7 @@ import { useInputIntegration } from './InputComponents';
 const GameScreen = () => {
   const { width, height } = Dimensions.get('window');
   const inputIntegration = useInputIntegration(width, height);
-  
+
   return (
     <View style={{ flex: 1 }}>
       {/* Game content */}
@@ -103,12 +105,12 @@ import { useGameStore } from './store/GameStore';
 const SettingsScreen = () => {
   const setInputMode = useGameStore((state) => state.setInputMode);
   const currentMode = useGameStore((state) => state.settings.inputMode);
-  
+
   const switchMode = () => {
     const newMode = currentMode === 'touchZones' ? 'virtualJoystick' : 'touchZones';
     setInputMode(newMode);
   };
-  
+
   return (
     <TouchableOpacity onPress={switchMode}>
       <Text>Switch to {currentMode === 'touchZones' ? 'Virtual Joystick' : 'Touch Zones'}</Text>
@@ -124,7 +126,7 @@ import { useGameStore } from './store/GameStore';
 
 const updateInputSettings = () => {
   const updateSettings = useGameStore.getState().updateSettings;
-  
+
   updateSettings({
     touchZones: {
       brakeButtonSize: 100,
@@ -145,6 +147,7 @@ const updateInputSettings = () => {
 ### Touch Zones Mode
 
 **Layout:**
+
 ```
 ┌─────────────────────────────────┐
 │  Steer Left    │  Steer Right   │
@@ -157,6 +160,7 @@ const updateInputSettings = () => {
 ```
 
 **Features:**
+
 - Large touch areas for easy steering
 - Dedicated brake button
 - Visual feedback zones
@@ -165,6 +169,7 @@ const updateInputSettings = () => {
 ### Virtual Joystick Mode
 
 **Layout:**
+
 ```
 ┌─────────────────────────────────┐
 │                                 │
@@ -179,6 +184,7 @@ const updateInputSettings = () => {
 ```
 
 **Features:**
+
 - Analog control for precise steering
 - Combined acceleration and steering
 - Dead zone to prevent accidental inputs

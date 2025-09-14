@@ -7,13 +7,13 @@ export class FixedStepLoop {
   private animationFrameId: number | null = null;
   private lastTime: number = 0;
   private accumulator: number = 0;
-  
+
   // Fixed timestep for 60 FPS
   private readonly fixedTimeStep: number = 1000 / 60; // ~16.67ms
-  
+
   // Maximum frame time to prevent spiral of death
   private readonly maxFrameTime: number = 250; // 250ms max
-  
+
   private callback: GameLoopCallback | null = null;
 
   constructor(callback: GameLoopCallback) {
