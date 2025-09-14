@@ -8,3 +8,6 @@ export * from './loop';
 
 // Game store exports
 export * from './store';
+
+// Physics exports
+export * from './physics';
