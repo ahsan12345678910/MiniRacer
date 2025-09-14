@@ -3,6 +3,7 @@ export * from './GameEngine';
 export * from './GameState';
 export * from './GameManager';
 export * from './GameIntegration';
+export * from './LapSystem';
 
 // Game loop exports
 export * from './loop';

@@ -3,6 +3,7 @@ import { Track } from './track/Track';
 import { loadDefaultTrack } from './track/TrackLoader';
 import { CollisionSystem } from './collision/Collision';
 import { useGameStore } from './store/GameStore';
+import { LapSystem, LapSystemEvents } from './LapSystem';
 
 /**
  * Integrated game system combining track, physics, and collision
@@ -11,6 +12,7 @@ export class GameIntegration {
   private car: CarModel;
   private track: Track | null = null;
   private collisionSystem: CollisionSystem;
+  private lapSystem: LapSystem | null = null;
   private controls: CarControls = {
     accelerate: false,
     brake: false,
@@ -26,11 +28,17 @@ export class GameIntegration {
   /**
    * Initialize the game with a track
    */
-  async initialize(): Promise<void> {
+  async initialize(lapEvents?: Partial<LapSystemEvents>): Promise<void> {
     try {
       // Load the track
       this.track = await loadDefaultTrack();
       this.collisionSystem.setTrack(this.track);
+
+      // Initialize lap system
+      this.lapSystem = new LapSystem(this.track, this.track.getLaps());
+      if (lapEvents) {
+        this.lapSystem.setEvents(lapEvents);
+      }
 
       // Set car to start position
       const startPos = this.track.getStartPosition();
@@ -86,6 +94,11 @@ export class GameIntegration {
     if (finishResult.hasCollision) {
       console.log('Finish line crossed!');
       // Handle finish line logic here
+    }
+
+    // Update lap system
+    if (this.lapSystem) {
+      this.lapSystem.update(this.car, deltaTime);
     }
 
     // Update game store
@@ -194,6 +207,31 @@ export class GameIntegration {
     const carState = this.car.getState();
     const surface = this.track.getSurfaceAt(carState.position.x, carState.position.y);
     return surface.type;
+  }
+
+  /**
+   * Get lap system
+   */
+  getLapSystem(): LapSystem | null {
+    return this.lapSystem;
+  }
+
+  /**
+   * Reset lap system for new race
+   */
+  resetLapSystem(): void {
+    if (this.lapSystem) {
+      this.lapSystem.reset();
+    }
+  }
+
+  /**
+   * Set lap system events
+   */
+  setLapEvents(events: Partial<LapSystemEvents>): void {
+    if (this.lapSystem) {
+      this.lapSystem.setEvents(events);
+    }
   }
 }
 
