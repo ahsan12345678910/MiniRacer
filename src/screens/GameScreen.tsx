@@ -10,9 +10,9 @@ const GameScreen: React.FC = () => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Menu' as never)}
         >
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>← Back to Menu</Text>
         </TouchableOpacity>
         <Text style={styles.score}>Score: 0</Text>
       </View>
@@ -38,34 +38,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 20,
+    backgroundColor: '#2a2a2a',
   },
   backButton: {
-    padding: 10,
+    padding: 12,
+    backgroundColor: '#4a4a4a',
+    borderRadius: 8,
   },
   backButtonText: {
     color: '#ffffff',
     fontSize: 16,
+    fontWeight: '600',
   },
   score: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   gameArea: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   gameText: {
     color: '#ffffff',
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 20,
+    textAlign: 'center',
   },
   instruction: {
     color: '#cccccc',
-    fontSize: 16,
+    fontSize: 18,
     textAlign: 'center',
+    lineHeight: 24,
   },
 });
 

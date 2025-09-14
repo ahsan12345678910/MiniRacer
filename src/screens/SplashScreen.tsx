@@ -8,7 +8,7 @@ const SplashScreen: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       navigation.navigate('Menu' as never);
-    }, 2000);
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [navigation]);
@@ -29,14 +29,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
   },
   title: {
-    fontSize: 32,
+    fontSize: 42,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 10,
+    marginBottom: 20,
+    textAlign: 'center',
+    letterSpacing: 2,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#cccccc',
+    textAlign: 'center',
   },
 });
 

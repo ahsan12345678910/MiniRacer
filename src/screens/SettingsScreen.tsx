@@ -13,9 +13,9 @@ const SettingsScreen: React.FC = () => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Menu' as never)}
         >
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>← Back to Menu</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Settings</Text>
       </View>
@@ -54,36 +54,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 20,
+    backgroundColor: '#2a2a2a',
   },
   backButton: {
-    padding: 10,
+    padding: 12,
+    backgroundColor: '#4a4a4a',
+    borderRadius: 8,
     marginRight: 20,
   },
   backButtonText: {
     color: '#ffffff',
     fontSize: 16,
+    fontWeight: '600',
   },
   title: {
     color: '#ffffff',
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
   },
   settingsContainer: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 30,
   },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 25,
+    paddingHorizontal: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
+    backgroundColor: '#2a2a2a',
+    marginVertical: 5,
+    borderRadius: 10,
   },
   settingLabel: {
     color: '#ffffff',
-    fontSize: 18,
+    fontSize: 20,
+    fontWeight: '500',
   },
 });
 
