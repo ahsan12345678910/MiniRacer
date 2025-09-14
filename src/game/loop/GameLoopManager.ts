@@ -1,16 +1,28 @@
 import { FixedStepLoop, GameLoopCallback } from './FixedStepLoop';
 import { useGameStore } from '../store/GameStore';
+import { GameIntegration } from '../GameIntegration';
 
 export class GameLoopManager implements GameLoopCallback {
   private gameLoop: FixedStepLoop;
+  private gameIntegration: GameIntegration | null = null;
 
   constructor() {
     this.gameLoop = new FixedStepLoop(this);
   }
 
+  // Set the game integration instance
+  setGameIntegration(gameIntegration: GameIntegration): void {
+    this.gameIntegration = gameIntegration;
+  }
+
   // Implementation of GameLoopCallback
   update(deltaTime: number): void {
-    // Call the store's update method with delta time
+    // Update the game integration first (handles physics, collision, etc.)
+    if (this.gameIntegration) {
+      this.gameIntegration.update(deltaTime);
+    }
+    
+    // Then update the store (handles UI state, lap times, etc.)
     useGameStore.getState().update(deltaTime);
   }
 

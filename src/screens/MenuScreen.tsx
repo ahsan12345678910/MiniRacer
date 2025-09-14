@@ -1,24 +1,31 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useClickSound } from '../audio/useAudio';
+// SIMPLIFIED: Commented out complex audio system
+// import { useClickSound } from '../audio/useAudio';
 
 const MenuScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { playClickSound } = useClickSound();
+  // SIMPLIFIED: Removed audio dependency
+  // const { playClickSound } = useClickSound();
 
   const handlePlay = () => {
-    playClickSound();
+    // SIMPLIFIED: Removed audio call
+    // playClickSound();
+    console.log('Play button pressed');
     navigation.navigate('Game' as never);
   };
 
   const handleSettings = () => {
-    playClickSound();
+    // SIMPLIFIED: Removed audio call
+    // playClickSound();
+    console.log('Settings button pressed');
     navigation.navigate('Settings' as never);
   };
 
   const handleQuit = () => {
-    playClickSound();
+    // SIMPLIFIED: Removed audio call
+    // playClickSound();
     console.log('Quit button pressed');
     Alert.alert('Quit Game', 'Are you sure you want to quit?', [
       { text: 'Cancel', style: 'cancel' },

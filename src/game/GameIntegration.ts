@@ -1,9 +1,10 @@
-import { CarModel, CarControls } from './physics/CarModel';
+import { CarModel, CarInputs } from './physics/CarModel';
 import { Track } from './track/Track';
 import { loadDefaultTrack } from './track/TrackLoader';
-import { CollisionSystem } from './collision/Collision';
+import { Collision } from './collision/Collision';
 import { useGameStore } from './store/GameStore';
 import { LapSystem, LapSystemEvents } from './LapSystem';
+import { Camera, createCamera } from './camera/Camera';
 
 /**
  * Integrated game system combining track, physics, and collision
@@ -11,18 +12,19 @@ import { LapSystem, LapSystemEvents } from './LapSystem';
 export class GameIntegration {
   private car: CarModel;
   private track: Track | null = null;
-  private collisionSystem: CollisionSystem;
+  private collisionSystem: Collision;
   private lapSystem: LapSystem | null = null;
-  private controls: CarControls = {
-    accelerate: false,
-    brake: false,
-    turnLeft: false,
-    turnRight: false,
+  private camera: Camera;
+  private controls: CarInputs = {
+    steer: 0,
+    throttle: 0,
+    brake: 0,
   };
 
-  constructor() {
+  constructor(screenWidth: number = 400, screenHeight: number = 800) {
     this.car = new CarModel({ x: 0, y: 0 }, 0);
-    this.collisionSystem = new CollisionSystem();
+    this.collisionSystem = new Collision();
+    this.camera = createCamera(screenWidth, screenHeight);
   }
 
   /**
@@ -35,7 +37,7 @@ export class GameIntegration {
       this.collisionSystem.setTrack(this.track);
 
       // Initialize lap system
-      this.lapSystem = new LapSystem(this.track, this.track.getLaps());
+      this.lapSystem = new LapSystem(this.track, 3); // Default to 3 laps
       if (lapEvents) {
         this.lapSystem.setEvents(lapEvents);
       }
@@ -43,6 +45,9 @@ export class GameIntegration {
       // Set car to start position
       const startPos = this.track.getStartPosition();
       this.car.resetToStart(startPos, startPos.angle);
+
+      // Set camera to follow the car
+      this.camera.setPosition(startPos.x, startPos.y);
 
       // Update game store
       this.updateGameStore();
@@ -59,6 +64,7 @@ export class GameIntegration {
    */
   update(deltaTime: number): void {
     if (!this.track) {
+      console.log('GameIntegration: No track available for update');
       return;
     }
 
@@ -75,6 +81,12 @@ export class GameIntegration {
       grip: surface.grip,
       roughness: surface.roughness,
     };
+
+    // Log controls and car state before update
+    if (this.controls.accelerate || this.controls.brake || this.controls.turnLeft || this.controls.turnRight) {
+      console.log('GameIntegration: Updating with controls:', this.controls);
+      console.log('GameIntegration: Car state before update:', carState);
+    }
 
     // Update car physics
     this.car.update(deltaTime, this.controls, surfaceProperties);
@@ -110,29 +122,40 @@ export class GameIntegration {
       this.lapSystem.update(this.car, deltaTime);
     }
 
+    // Update camera to follow the car
+    const currentCarState = this.car.getState();
+    this.camera.setTarget(currentCarState.position.x, currentCarState.position.y);
+    this.camera.update(deltaTime);
+
     // Update game store
     this.updateGameStore();
+    
+    // Log car state after update if controls were active
+    if (this.controls.accelerate || this.controls.brake || this.controls.turnLeft || this.controls.turnRight) {
+      const newCarState = this.car.getState();
+      console.log('GameIntegration: Car state after update:', newCarState);
+    }
   }
 
   /**
-   * Update game store with current car state
+   * Update game store with current car state using mutation methods
    */
   private updateGameStore(): void {
     const carState = this.car.getState();
-    useGameStore
-      .getState()
-      .setCarPosition(carState.position.x, carState.position.y);
-    useGameStore
-      .getState()
-      .setCarVelocity(carState.velocity.x, carState.velocity.y);
-    useGameStore.getState().setCarAngle(carState.angle);
+    const store = useGameStore.getState();
+    store.mutateCarPosition(carState.position.x, carState.position.y);
+    store.mutateCarVelocity(carState.velocity.x, carState.velocity.y);
+    store.mutateCarAngle(carState.angle);
+    store.mutateCarSpeed(carState.speed);
   }
 
   /**
    * Set control inputs
    */
-  setControls(controls: Partial<CarControls>): void {
+  setControls(controls: Partial<CarInputs>): void {
+    console.log('GameIntegration: Setting controls:', controls);
     this.controls = { ...this.controls, ...controls };
+    console.log('GameIntegration: Current controls after merge:', this.controls);
   }
 
   /**
@@ -255,6 +278,34 @@ export class GameIntegration {
     if (this.lapSystem) {
       this.lapSystem.setEvents(events);
     }
+  }
+
+  /**
+   * Get camera instance
+   */
+  getCamera(): Camera {
+    return this.camera;
+  }
+
+  /**
+   * Convert world coordinates to screen coordinates
+   */
+  worldToScreen(worldX: number, worldY: number): { x: number; y: number } {
+    return this.camera.worldToScreen(worldX, worldY);
+  }
+
+  /**
+   * Convert screen coordinates to world coordinates
+   */
+  screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
+    return this.camera.screenToWorld(screenX, screenY);
+  }
+
+  /**
+   * Update camera screen dimensions
+   */
+  updateCameraDimensions(width: number, height: number): void {
+    this.camera.updateScreenDimensions(width, height);
   }
 }
 

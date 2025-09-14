@@ -7,7 +7,8 @@ import { useGameStore } from '../game/store/GameStore';
  * Optimized to avoid unnecessary re-renders
  */
 export const useAudio = () => {
-  const { settings, car } = useGameStore();
+  const settings = useGameStore(state => state.settings);
+  const car = useGameStore(state => state.car);
   const audioStateRef = useRef<AudioState>(audioManager.getState());
   const lastSpeedRef = useRef<number>(0);
   const lastSettingsRef = useRef(settings);

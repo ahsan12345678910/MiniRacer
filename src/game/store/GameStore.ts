@@ -55,6 +55,13 @@ interface GameStore extends GameStoreState {
   resumeGame: () => void;
   stopGame: () => void;
   resetGame: () => void;
+  
+  // Direct mutation methods for fixed-step loop
+  mutateCarPosition: (x: number, y: number) => void;
+  mutateCarVelocity: (x: number, y: number) => void;
+  mutateCarAngle: (angle: number) => void;
+  mutateCarSpeed: (speed: number) => void;
+  mutateLapTime: (time: number) => void;
 
   // Car controls
   setCarPosition: (x: number, y: number) => void;
@@ -177,23 +184,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // Car control actions
   setCarPosition: (x: number, y: number) =>
-    set(state => ({
-      car: { ...state.car, position: { x, y } },
-    })),
+    set(state => {
+      console.log('GameStore: Setting car position:', x, y);
+      return {
+        car: { ...state.car, position: { x, y } },
+      };
+    }),
 
   setCarVelocity: (x: number, y: number) =>
-    set(state => ({
-      car: {
-        ...state.car,
-        velocity: { x, y },
-        speed: Math.sqrt(x ** 2 + y ** 2),
-      },
-    })),
+    set(state => {
+      console.log('GameStore: Setting car velocity:', x, y);
+      return {
+        car: {
+          ...state.car,
+          velocity: { x, y },
+          speed: Math.sqrt(x ** 2 + y ** 2),
+        },
+      };
+    }),
 
   setCarAngle: (angle: number) =>
-    set(state => ({
-      car: { ...state.car, angle },
-    })),
+    set(state => {
+      console.log('GameStore: Setting car angle:', angle);
+      return {
+        car: { ...state.car, angle },
+      };
+    }),
 
   accelerate: (force: number) =>
     set(state => {
@@ -297,4 +313,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set(state => ({
       settings: { ...state.settings, musicEnabled: enabled },
     })),
+
+  // Direct mutation methods for fixed-step loop (no setState per tick)
+  mutateCarPosition: (x: number, y: number) => {
+    const state = get();
+    state.car.position.x = x;
+    state.car.position.y = y;
+  },
+
+  mutateCarVelocity: (x: number, y: number) => {
+    const state = get();
+    state.car.velocity.x = x;
+    state.car.velocity.y = y;
+    state.car.speed = Math.sqrt(x ** 2 + y ** 2);
+  },
+
+  mutateCarAngle: (angle: number) => {
+    const state = get();
+    state.car.angle = angle;
+  },
+
+  mutateCarSpeed: (speed: number) => {
+    const state = get();
+    state.car.speed = speed;
+  },
+
+  mutateLapTime: (time: number) => {
+    const state = get();
+    state.lapData.currentLapTime = time;
+  },
 }));

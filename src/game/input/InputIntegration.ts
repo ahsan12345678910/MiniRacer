@@ -7,12 +7,21 @@ import { CarControls } from '../physics/CarModel';
  */
 export class InputIntegration {
   private inputManager: InputManager;
+  private currentControls: CarControls = {
+    accelerate: false,
+    brake: false,
+    turnLeft: false,
+    turnRight: false,
+  };
 
   constructor(screenWidth: number = 400, screenHeight: number = 800) {
+    console.log('InputIntegration: Constructor called with screen size:', screenWidth, screenHeight);
     // Initialize input manager with settings from store
     const storeSettings = useGameStore.getState().settings;
     const inputSettings =
       this.convertGameSettingsToInputSettings(storeSettings);
+
+    console.log('InputIntegration: Input settings:', inputSettings);
 
     this.inputManager = new InputManager(
       screenWidth,
@@ -24,6 +33,8 @@ export class InputIntegration {
     this.inputManager.setControlsChangeCallback((controls: CarControls) => {
       this.handleControlsChange(controls);
     });
+    
+    console.log('InputIntegration: Constructor completed, callback set');
   }
 
   /**
@@ -53,24 +64,10 @@ export class InputIntegration {
    * Handle controls change from input manager
    */
   private handleControlsChange(controls: CarControls): void {
-    // Apply controls to car physics
-    const store = useGameStore.getState();
-
-    if (controls.accelerate) {
-      store.accelerate(1.0);
-    }
-
-    if (controls.brake) {
-      store.brake(1.0);
-    }
-
-    if (controls.turnLeft) {
-      store.turn(-0.1);
-    }
-
-    if (controls.turnRight) {
-      store.turn(0.1);
-    }
+    // Store the controls for the game loop to pick up
+    // The GameIntegration will handle the actual physics updates
+    this.currentControls = controls;
+    console.log('InputIntegration: Controls changed:', controls);
   }
 
   /**
@@ -102,6 +99,13 @@ export class InputIntegration {
    */
   handleTouchEnd(x: number, y: number): void {
     this.inputManager.handleTouchEnd(x, y);
+    // Reset controls when touch ends
+    this.currentControls = {
+      accelerate: false,
+      brake: false,
+      turnLeft: false,
+      turnRight: false,
+    };
   }
 
   /**
@@ -115,7 +119,16 @@ export class InputIntegration {
    * Get current controls
    */
   getControls(): CarControls {
-    return this.inputManager.getControls();
+    return { ...this.currentControls };
+  }
+
+  /**
+   * Set a specific control value
+   */
+  setSpecificControl(control: keyof CarControls, value: boolean): void {
+    this.currentControls[control] = value;
+    console.log('InputIntegration: Set specific control:', control, '=', value);
+    console.log('InputIntegration: Current controls after specific set:', this.currentControls);
   }
 
   /**

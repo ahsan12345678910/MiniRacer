@@ -68,27 +68,19 @@ export class LapSystem {
    * Initialize start line detection zone from track data
    */
   private initializeStartLine(): void {
-    const startLineZones = this.track
-      .getZones()
-      .filter(zone => zone.type === 'startLine');
+    const startLine = this.track.getStartLine();
 
-    if (startLineZones.length > 0) {
-      const startLineZone = startLineZones[0];
-      if (startLineZone && startLineZone.geometry.type === 'rectangle') {
-        const points = startLineZone.geometry.points;
-        const width = startLineZone.geometry.width || 0;
-        const height = startLineZone.geometry.height || 0;
-
-        if (points.length > 0) {
-          this.startLineZone = {
-            id: startLineZone.id,
-            position: { x: points[0].x, y: points[0].y },
-            width,
-            height,
-            direction: this.calculateStartLineDirection(startLineZone),
-          };
-        }
-      }
+    if (startLine) {
+      // Create a start line zone from the track data
+      const startLineZone = {
+        id: 'startLine',
+        position: { x: startLine.x1, y: startLine.y1 },
+        width: Math.abs(startLine.x2 - startLine.x1),
+        height: Math.abs(startLine.y2 - startLine.y1),
+        direction: { x: startLine.norm[0], y: startLine.norm[1] }
+      };
+      
+      this.startLineZone = startLineZone;
     }
 
     // Fallback: create a default start line at the track start position

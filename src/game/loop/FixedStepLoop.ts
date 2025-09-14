@@ -1,81 +1,74 @@
-export interface GameLoopCallback {
-  update(deltaTime: number): void;
-}
+/**
+ * Fixed Step Game Loop
+ * 
+ * Ref-driven game loop that runs at 60 FPS with fixed timestep
+ * - Idempotent start/stop methods
+ * - No React state dependencies
+ * - Uses requestAnimationFrame with accumulator pattern
+ */
 
 export class FixedStepLoop {
-  private isRunning: boolean = false;
+  private running: boolean = false;
+  private last: number = 0;
+  private acc: number = 0;
   private animationFrameId: number | null = null;
-  private lastTime: number = 0;
-  private accumulator: number = 0;
-
+  
   // Fixed timestep for 60 FPS
-  private readonly fixedTimeStep: number = 1000 / 60; // ~16.67ms
+  private readonly dt: number = 1 / 60; // ~0.0167 seconds
+  private readonly maxStepsPerFrame: number = 5;
 
-  // Maximum frame time to prevent spiral of death
-  private readonly maxFrameTime: number = 250; // 250ms max
-
-  private callback: GameLoopCallback | null = null;
-
-  constructor(callback: GameLoopCallback) {
-    this.callback = callback;
-  }
+  constructor(private update: (dt: number) => void) {}
 
   start(): void {
-    if (this.isRunning) {
-      return;
+    if (this.running) {
+      return; // NO-OP if already running
     }
-
-    this.isRunning = true;
-    this.lastTime = performance.now();
-    this.accumulator = 0;
-    this.loop();
+    
+    this.running = true;
+    this.last = performance.now();
+    this.acc = 0;
+    
+    const tick = () => {
+      if (!this.running) {
+        return;
+      }
+      
+      const now = performance.now();
+      let elapsed = (now - this.last) / 1000; // Convert to seconds
+      this.last = now;
+      
+      // Clamp elapsed time to prevent spiral of death
+      elapsed = Math.min(elapsed, 0.25);
+      this.acc += elapsed;
+      
+      // Fixed timestep updates
+      let steps = 0;
+      while (this.acc >= this.dt && steps < this.maxStepsPerFrame) {
+        this.update(this.dt);
+        this.acc -= this.dt;
+        steps++;
+      }
+      
+      this.animationFrameId = requestAnimationFrame(tick);
+    };
+    
+    requestAnimationFrame(tick);
   }
 
   stop(): void {
-    this.isRunning = false;
+    if (!this.running) {
+      return; // NO-OP if not running
+    }
+    
+    this.running = false;
+    
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
   }
 
-  private loop = (): void => {
-    if (!this.isRunning) {
-      return;
-    }
-
-    const currentTime = performance.now();
-    let frameTime = currentTime - this.lastTime;
-    this.lastTime = currentTime;
-
-    // Prevent spiral of death by clamping frame time
-    if (frameTime > this.maxFrameTime) {
-      frameTime = this.maxFrameTime;
-    }
-
-    this.accumulator += frameTime;
-
-    // Fixed timestep updates
-    while (this.accumulator >= this.fixedTimeStep) {
-      if (this.callback) {
-        this.callback.update(this.fixedTimeStep);
-      }
-      this.accumulator -= this.fixedTimeStep;
-    }
-
-    // Continue the loop
-    this.animationFrameId = requestAnimationFrame(this.loop);
-  };
-
-  isActive(): boolean {
-    return this.isRunning;
-  }
-
-  getFixedTimeStep(): number {
-    return this.fixedTimeStep;
-  }
-
-  getFPS(): number {
-    return 1000 / this.fixedTimeStep;
+  isRunning(): boolean {
+    return this.running;
   }
 }

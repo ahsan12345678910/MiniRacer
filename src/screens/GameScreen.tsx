@@ -1,262 +1,180 @@
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-  useMemo,
-} from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  ActivityIndicator,
   Dimensions,
-  PanResponder,
-  Animated,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { useGameStore } from '../game/store/GameStore';
-import { GameIntegration } from '../game/GameIntegration';
-import { LapSystem } from '../game/LapSystem';
-import { useAudio } from '../audio/useAudio';
+import { useFocusEffect } from '@react-navigation/native';
+import { FixedStepLoop } from '../game/loop/FixedStepLoop';
+import { GameCore, makeInitialGame, resetCarAtStart } from '../game/state/GameState';
+import { loadTrack } from '../game/world/TrackLoader';
+import { updateCar, SURFACE_TYPES } from '../game/physics/CarModel';
+import { resolve } from '../game/physics/Collision';
+import { controlsRef } from '../game/input/InputManager';
+import { useUIStore } from '../game/state/UIState';
+import { TouchZones, ButtonsPad, VirtualJoystick } from '../game/input/InputManager';
+import { HUD } from '../ui/HUD';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GameScreen: React.FC = () => {
-  const navigation = useNavigation();
-  const {
-    car,
-    lapData,
-    isPaused,
-    settings,
-    startGame,
-    pauseGame,
-    resumeGame,
-    accelerate,
-    brake,
-    turn,
-  } = useGameStore();
+  // Refs for game state
+  const gameRef = useRef<GameCore>(makeInitialGame());
+  const trackRef = useRef<any>(null);
+  const loopRef = useRef<FixedStepLoop | null>(null);
+  const mountedRef = useRef(true);
 
-  const [gameIntegration, setGameIntegration] =
-    useState<GameIntegration | null>(null);
-  const [, setLapSystem] = useState<LapSystem | null>(null);
-  const [joystickPosition, setJoystickPosition] = useState({ x: 0, y: 0 });
-  const [isJoystickActive, setIsJoystickActive] = useState(false);
-  const gameLoopRef = useRef<number | null>(null);
-  const lastTimeRef = useRef<number>(0);
-  const carPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
-  const carRotation = useRef(new Animated.Value(0)).current;
+  // React state
+  const [ready, setReady] = useState(false);
+  const [inputMode, setInputMode] = useState<'touchZones' | 'joystick'>('touchZones');
 
-  // Audio system
-  const { playClickSound, pauseAllAudio, resumeAllAudio } = useAudio();
+  // UI store
+  const { setSnapshot, setPaused, paused } = useUIStore();
 
-  // Initialize game
+  // Load track on mount
   useEffect(() => {
-    initializeGame();
-    return () => {
-      if (gameLoopRef.current) {
-        cancelAnimationFrame(gameLoopRef.current);
+    let mounted = true;
+    
+    (async () => {
+      try {
+        const track = await loadTrack('default');
+        if (!mounted) return;
+        
+        trackRef.current = track;
+        gameRef.current.track = track;
+        
+        // Place car at start position
+        resetCarAtStart(gameRef.current);
+        
+        setReady(true);
+      } catch (error) {
+        console.error('Track load failed:', error);
       }
+    })();
+
+    return () => {
+      mounted = false;
+      mountedRef.current = false;
     };
   }, []);
 
-  // Update car position animation when store changes
-  useEffect(() => {
-    carPosition.setValue({ x: car.position.x, y: car.position.y });
-    carRotation.setValue(car.angle);
-  }, [car.position.x, car.position.y, car.angle]);
+  // Game update function
+  const update = useCallback((dt: number) => {
+    const game = gameRef.current;
+    if (!game.track) return;
 
-  const initializeGame = async () => {
-    try {
-      const game = new GameIntegration();
-      await game.initialize();
-
-      setGameIntegration(game);
-      setLapSystem(game.getLapSystem());
-      startGame();
-
-      // Start game loop
-      startGameLoop();
-    } catch (error) {
-      console.error('Failed to initialize game:', error);
+    // Read controls from ref
+    const controls = controlsRef.current;
+    
+    // Get surface at car position
+    const surface = game.track.surfaces.find(s => {
+      const [x, y, w, h] = s.rect;
+      return game.car.x >= x && game.car.x <= x + w && 
+             game.car.y >= y && game.car.y <= y + h;
+    });
+    
+    const surfaceType = surface?.type === 'asphalt' ? SURFACE_TYPES.ASPHALT : SURFACE_TYPES.GRASS;
+    
+    // Update car physics
+    updateCar(game.car, controls, surfaceType, game.track.walls, dt);
+    
+    // Update lap system (simplified)
+    const startLine = game.track.startLine;
+    const carX = game.car.x;
+    const carY = game.car.y;
+    
+    // Check if car crossed start line
+    if (carX >= startLine.x1 && carX <= startLine.x2 && 
+        carY >= Math.min(startLine.y1, startLine.y2) && carY <= Math.max(startLine.y1, startLine.y2)) {
+      const crossSide = carX > (startLine.x1 + startLine.x2) / 2 ? 1 : -1;
+      
+      if (game.lap.lastCrossSide !== 0 && game.lap.lastCrossSide !== crossSide) {
+        // Lap completed
+        game.lap.current += 1;
+        if (game.lap.bestMs === 0 || game.lap.bestMs > 0) {
+          game.lap.bestMs = Math.max(game.lap.bestMs, 0); // Placeholder
+        }
+      }
+      
+      game.lap.lastCrossSide = crossSide;
     }
-  };
+    
+    // Compute speed in km/h
+    const speedKmh = Math.sqrt(game.car.vx * game.car.vx + game.car.vy * game.car.vy) * 3.6;
+    
+    // Format lap time (simplified)
+    const lapTime = formatTime(0); // Placeholder
+    
+    // Publish UI snapshot (throttled)
+    setSnapshot({
+      speedKmh,
+      lap: lapTime,
+      bestMs: game.lap.bestMs,
+    });
+  }, [setSnapshot]);
 
-  const startGameLoop = () => {
-    const gameLoop = (currentTime: number) => {
-      const deltaTime = currentTime - lastTimeRef.current;
-      lastTimeRef.current = currentTime;
-
-      if (deltaTime > 0 && !isPaused) {
-        // Update game integration
-        if (gameIntegration) {
-          gameIntegration.update(deltaTime);
-        }
-
-        // Update game store
-        useGameStore.getState().update(deltaTime);
+  // Focus effect to start/stop loop
+  useFocusEffect(
+    useCallback(() => {
+      if (!loopRef.current) {
+        loopRef.current = new FixedStepLoop(update);
       }
-
-      gameLoopRef.current = requestAnimationFrame(gameLoop);
-    };
-
-    lastTimeRef.current = performance.now();
-    gameLoopRef.current = requestAnimationFrame(gameLoop);
-  };
-
-  // Touch controls
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: evt => {
-      const { locationX, locationY } = evt.nativeEvent;
-      if (settings.inputMode === 'virtualJoystick') {
-        setIsJoystickActive(true);
-        setJoystickPosition({ x: locationX, y: locationY });
+      
+      if (ready && !loopRef.current.isRunning()) {
+        loopRef.current.start();
       }
-      handleTouchInput(locationX, locationY);
-    },
-    onPanResponderMove: evt => {
-      const { locationX, locationY } = evt.nativeEvent;
-      if (settings.inputMode === 'virtualJoystick') {
-        setJoystickPosition({ x: locationX, y: locationY });
-      }
-      handleTouchInput(locationX, locationY);
-    },
-    onPanResponderRelease: () => {
-      // Stop all inputs
-      accelerate(0);
-      brake(0);
-      turn(0);
-      if (settings.inputMode === 'virtualJoystick') {
-        setIsJoystickActive(false);
-        setJoystickPosition({ x: 0, y: 0 });
-      }
-    },
-  });
-
-  const handleTouchInput = useCallback(
-    (x: number, y: number) => {
-      const centerX = screenWidth / 2;
-      const centerY = screenHeight / 2;
-
-      // Apply settings-based control mode
-      if (settings.inputMode === 'touchZones') {
-        // Touch zones mode - left side for steering, right side for acceleration
-        if (x < centerX) {
-          // Left side - steering
-          const steerAmount = (centerX - x) / centerX;
-          turn(steerAmount * 0.1);
-        } else {
-          // Right side - acceleration
-          const accelAmount = (x - centerX) / centerX;
-          if (accelAmount > 0.3) {
-            accelerate(accelAmount * 100);
-          } else if (accelAmount < -0.3) {
-            brake(Math.abs(accelAmount) * 100);
-          }
-        }
-      } else {
-        // Virtual joystick mode - different control scheme
-        const deltaX = x - centerX;
-        const deltaY = y - centerY;
-        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-        if (distance > settings.virtualJoystick.deadZone) {
-          // Steering based on horizontal movement
-          const steerAmount = Math.max(
-            -1,
-            Math.min(1, deltaX / (screenWidth * 0.3))
-          );
-          turn(steerAmount * 0.1);
-
-          // Acceleration based on vertical movement
-          const accelAmount = Math.max(
-            -1,
-            Math.min(1, -deltaY / (screenHeight * 0.3))
-          );
-          if (accelAmount > 0.1) {
-            accelerate(accelAmount * 100);
-          } else if (accelAmount < -0.1) {
-            brake(Math.abs(accelAmount) * 100);
-          }
-        }
-      }
-    },
-    [
-      settings.inputMode,
-      settings.virtualJoystick.deadZone,
-      turn,
-      accelerate,
-      brake,
-    ]
+      
+      return () => {
+        loopRef.current?.stop();
+      };
+    }, [ready, update])
   );
 
-  const handlePause = useCallback(() => {
-    if (isPaused) {
-      resumeGame();
-      resumeAllAudio();
-    } else {
-      pauseGame();
-      pauseAllAudio();
-    }
-    playClickSound();
-  }, [
-    isPaused,
-    resumeGame,
-    pauseGame,
-    resumeAllAudio,
-    pauseAllAudio,
-    playClickSound,
-  ]);
-
-  const handleBackToMenu = useCallback(() => {
-    pauseGame();
-    pauseAllAudio();
-    playClickSound();
-    navigation.navigate('Menu' as never);
-  }, [pauseGame, pauseAllAudio, playClickSound, navigation]);
-
-  const formatTime = useCallback((timeMs: number): string => {
+  // Format time helper
+  const formatTime = (timeMs: number): string => {
     const totalSeconds = Math.floor(timeMs / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     const milliseconds = Math.floor((timeMs % 1000) / 10);
 
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+  };
+
+  // Handle pause
+  const handlePause = useCallback(() => {
+    const newPaused = !paused;
+    setPaused(newPaused);
+    
+    if (newPaused) {
+      loopRef.current?.stop();
+    } else if (ready) {
+      loopRef.current?.start();
+    }
+  }, [paused, setPaused, ready]);
+
+  // Handle back to menu
+  const handleBackToMenu = useCallback(() => {
+    loopRef.current?.stop();
+    // Navigation would go here
   }, []);
 
-  const formatSpeed = useCallback((speed: number): string => {
-    // Convert game units to km/h (assuming 1 game unit = 1 meter)
-    const kmh = (speed * 3.6).toFixed(0);
-    return `${kmh} km/h`;
-  }, []);
+  // Render loading state
+  if (!ready) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+        <Text style={styles.loadingText}>Loading track...</Text>
+      </View>
+    );
+  }
 
-  // Memoize expensive calculations
-  const currentLapTimeFormatted = useMemo(
-    () => formatTime(lapData.currentLapTime),
-    [lapData.currentLapTime, formatTime]
-  );
-  const bestLapTimeFormatted = useMemo(
-    () => (lapData.bestLapTime > 0 ? formatTime(lapData.bestLapTime) : ''),
-    [lapData.bestLapTime, formatTime]
-  );
-  const speedFormatted = useMemo(
-    () => formatSpeed(car.speed),
-    [car.speed, formatSpeed]
-  );
-  const controlHintText = useMemo(
-    () =>
-      settings.inputMode === 'touchZones'
-        ? 'Touch left side to steer, right side to accelerate'
-        : 'Touch and drag to control steering and acceleration',
-    [settings.inputMode]
-  );
-
+  // Render game
   return (
     <View style={styles.container}>
       {/* Track Background */}
-      <View style={styles.trackBackground}>
+      <View style={styles.trackBackground} pointerEvents="none">
         {/* Tiled track pattern */}
         {Array.from({ length: 20 }, (_, i) => (
           <View
@@ -275,94 +193,25 @@ const GameScreen: React.FC = () => {
         <View style={styles.trackBoundary} />
 
         {/* Car */}
-        <Animated.View
+        <View
           style={[
             styles.car,
             {
-              transform: [
-                { translateX: carPosition.x },
-                { translateY: carPosition.y },
-                {
-                  rotate: carRotation.interpolate({
-                    inputRange: [0, Math.PI * 2],
-                    outputRange: ['0deg', '360deg'],
-                  }),
-                },
-              ],
+              left: gameRef.current.car.x - 15,
+              top: gameRef.current.car.y - 7.5,
+              transform: [{ rotate: `${gameRef.current.car.angle * 180 / Math.PI}deg` }],
             },
           ]}
         />
       </View>
 
       {/* HUD Overlay */}
-      <View style={styles.hudOverlay}>
-        {/* Top HUD */}
-        <View style={styles.topHud}>
-          <View style={styles.hudLeft}>
-            <Text style={styles.speedText}>{speedFormatted}</Text>
-            <Text style={styles.speedLabel}>SPEED</Text>
-          </View>
+      <HUD onPause={handlePause} onMenu={handleBackToMenu} />
 
-          <TouchableOpacity style={styles.pauseButton} onPress={handlePause}>
-            <Text style={styles.pauseButtonText}>{isPaused ? '▶' : '⏸'}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={handleBackToMenu}
-          >
-            <Text style={styles.menuButtonText}>MENU</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Bottom HUD */}
-        <View style={styles.bottomHud}>
-          <View style={styles.lapInfo}>
-            <Text style={styles.lapCounter}>
-              LAP {lapData.currentLap} / {lapData.totalLaps}
-            </Text>
-            <Text style={styles.currentLapTime}>{currentLapTimeFormatted}</Text>
-          </View>
-
-          {lapData.bestLapTime > 0 && (
-            <View style={styles.bestLapInfo}>
-              <Text style={styles.bestLapLabel}>BEST LAP</Text>
-              <Text style={styles.bestLapTime}>{bestLapTimeFormatted}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Virtual Joystick Visual */}
-      {settings.inputMode === 'virtualJoystick' && isJoystickActive && (
-        <View style={styles.joystickContainer}>
-          <View
-            style={[
-              styles.joystickBase,
-              {
-                left: joystickPosition.x - settings.virtualJoystick.size / 2,
-                top: joystickPosition.y - settings.virtualJoystick.size / 2,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.joystickKnob,
-              {
-                left: joystickPosition.x - 15,
-                top: joystickPosition.y - 15,
-              },
-            ]}
-          />
-        </View>
-      )}
-
-      {/* Touch Controls */}
-      <View style={styles.touchControls} {...panResponder.panHandlers}>
-        <View style={styles.controlHint}>
-          <Text style={styles.controlHintText}>{controlHintText}</Text>
-        </View>
-      </View>
+      {/* Input Controls */}
+      {inputMode === 'touchZones' && <TouchZones />}
+      {inputMode === 'joystick' && <VirtualJoystick />}
+      <ButtonsPad />
     </View>
   );
 };
@@ -371,6 +220,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a1a',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    marginTop: 20,
   },
   trackBackground: {
     flex: 1,
@@ -402,159 +262,6 @@ const styles = StyleSheet.create({
     height: 15,
     backgroundColor: '#FF4444',
     borderRadius: 3,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    left: screenWidth / 2 - 15,
-    top: screenHeight / 2 - 7.5,
-  },
-  hudOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'box-none',
-  },
-  topHud: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  hudLeft: {
-    alignItems: 'center',
-  },
-  speedText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-  },
-  speedLabel: {
-    color: '#CCCCCC',
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  pauseButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  pauseButtonText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  menuButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-  },
-  menuButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  bottomHud: {
-    position: 'absolute',
-    bottom: 50,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  lapInfo: {
-    alignItems: 'flex-start',
-  },
-  lapCounter: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  currentLapTime: {
-    color: '#00FF00',
-    fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-    marginTop: 4,
-  },
-  bestLapInfo: {
-    alignItems: 'flex-end',
-  },
-  bestLapLabel: {
-    color: '#CCCCCC',
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  bestLapTime: {
-    color: '#FFD700',
-    fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-    marginTop: 4,
-  },
-  touchControls: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'box-none',
-  },
-  controlHint: {
-    position: 'absolute',
-    bottom: 100,
-    left: 20,
-    right: 20,
-    alignItems: 'center',
-  },
-  controlHintText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-    textAlign: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  joystickContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-  },
-  joystickBase: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  joystickKnob: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },

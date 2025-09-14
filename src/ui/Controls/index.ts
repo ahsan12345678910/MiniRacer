@@ -1,0 +1,1 @@
+export { ButtonsPad } from './ButtonsPad';

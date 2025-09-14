@@ -1,14 +1,18 @@
+// SIMPLIFIED VERSION - Complex gesture handler commented out
+// import 'react-native-gesture-handler';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+// import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Import screens
 import SplashScreen from './src/screens/SplashScreen';
 import MenuScreen from './src/screens/MenuScreen';
-import GameScreen from './src/screens/GameScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
+// SIMPLIFIED: Using simple game screen instead of complex one
+import SimpleGameScreen from './src/screens/SimpleGameScreen';
+// SIMPLIFIED: Using simple settings screen instead of complex one
+import SimpleSettingsScreen from './src/screens/SimpleSettingsScreen';
 
 // Define navigation types
 export type RootStackParamList = {
@@ -22,22 +26,21 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Splash"
-          screenOptions={{
-            headerShown: false,
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen name="Splash" component={SplashScreen} />
-          <Stack.Screen name="Menu" component={MenuScreen} />
-          <Stack.Screen name="Game" component={GameScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-      <StatusBar style="light" />
-    </GestureHandlerRootView>
+    // SIMPLIFIED: Removed GestureHandlerRootView wrapper
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName="Splash"
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="Menu" component={MenuScreen} />
+        <Stack.Screen name="Game" component={SimpleGameScreen} />
+        <Stack.Screen name="Settings" component={SimpleSettingsScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+    // <StatusBar style="light" />
   );
 }

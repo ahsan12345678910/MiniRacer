@@ -1,174 +1,48 @@
 {
-  "id": "default",
-  "name": "Default Track",
-  "description": "A simple rectangular racing track with multiple surface types",
-  "version": "1.0.0",
-  "author": "MiniRacer",
-  "difficulty": "easy",
-  "laps": 3,
   "width": 800,
   "height": 600,
-  "startPosition": {
+  "start": {
     "x": 100,
     "y": 300,
     "angle": 0
   },
-  "checkpoints": [
+  "surfaces": [
     {
-      "id": "cp1",
-      "position": { "x": 700, "y": 300 },
-      "radius": 50,
-      "order": 1
-    },
-    {
-      "id": "cp2",
-      "position": { "x": 700, "y": 200 },
-      "radius": 50,
-      "order": 2
-    },
-    {
-      "id": "cp3",
-      "position": { "x": 100, "y": 200 },
-      "radius": 50,
-      "order": 3
-    }
-  ],
-  "zones": [
-    {
-      "id": "asphalt_main",
       "type": "asphalt",
-      "name": "Main Track",
-      "color": "#333333",
-      "properties": {
-        "friction": 0.95,
-        "grip": 1.0,
-        "roughness": 1.0,
-        "isCollidable": false,
-        "isCheckpoint": false
-      },
-      "geometry": {
-        "type": "rectangle",
-        "points": [{ "x": 50, "y": 150 }],
-        "width": 700,
-        "height": 300
-      }
+      "rect": [50, 50, 700, 500]
     },
     {
-      "id": "asphalt_extension",
-      "type": "asphalt",
-      "name": "Track Extension",
-      "color": "#333333",
-      "properties": {
-        "friction": 0.95,
-        "grip": 1.0,
-        "roughness": 1.0,
-        "isCollidable": false,
-        "isCheckpoint": false
-      },
-      "geometry": {
-        "type": "rectangle",
-        "points": [{ "x": 50, "y": 100 }],
-        "width": 50,
-        "height": 50
-      }
-    },
-    {
-      "id": "grass_outer",
       "type": "grass",
-      "name": "Outer Grass",
-      "color": "#228B22",
-      "properties": {
-        "friction": 0.85,
-        "grip": 0.7,
-        "roughness": 0.8,
-        "isCollidable": false,
-        "isCheckpoint": false
-      },
-      "geometry": {
-        "type": "rectangle",
-        "points": [{ "x": 0, "y": 0 }],
-        "width": 800,
-        "height": 600
-      }
+      "rect": [0, 0, 800, 50]
     },
     {
-      "id": "barrier_outer",
-      "type": "barrier",
-      "name": "Outer Barrier",
-      "color": "#8B4513",
-      "properties": {
-        "friction": 0.9,
-        "grip": 0.5,
-        "roughness": 1.0,
-        "isCollidable": true,
-        "isCheckpoint": false
-      },
-      "geometry": {
-        "type": "rectangle",
-        "points": [{ "x": 0, "y": 0 }],
-        "width": 800,
-        "height": 600
-      }
+      "type": "grass",
+      "rect": [0, 550, 800, 50]
     },
     {
-      "id": "barrier_inner",
-      "type": "barrier",
-      "name": "Inner Barrier",
-      "color": "#8B4513",
-      "properties": {
-        "friction": 0.9,
-        "grip": 0.5,
-        "roughness": 1.0,
-        "isCollidable": true,
-        "isCheckpoint": false
-      },
-      "geometry": {
-        "type": "rectangle",
-        "points": [{ "x": 30, "y": 130 }],
-        "width": 740,
-        "height": 340
-      }
+      "type": "grass",
+      "rect": [0, 0, 50, 600]
     },
     {
-      "id": "start_line",
-      "type": "startLine",
-      "name": "Start Line",
-      "color": "#FFFFFF",
-      "properties": {
-        "friction": 0.95,
-        "grip": 1.0,
-        "roughness": 1.0,
-        "isCollidable": false,
-        "isCheckpoint": true
-      },
-      "geometry": {
-        "type": "rectangle",
-        "points": [{ "x": 90, "y": 290 }],
-        "width": 20,
-        "height": 20
-      }
-    },
-    {
-      "id": "finish_line",
-      "type": "finishLine",
-      "name": "Finish Line",
-      "color": "#FFD700",
-      "properties": {
-        "friction": 0.95,
-        "grip": 1.0,
-        "roughness": 1.0,
-        "isCollidable": false,
-        "isCheckpoint": true
-      },
-      "geometry": {
-        "type": "rectangle",
-        "points": [{ "x": 90, "y": 310 }],
-        "width": 20,
-        "height": 20
-      }
+      "type": "grass",
+      "rect": [750, 0, 50, 600]
     }
   ],
-  "background": {
-    "color": "#87CEEB"
+  "walls": [
+    [50, 50, 750, 50],
+    [750, 50, 750, 550],
+    [750, 550, 50, 550],
+    [50, 550, 50, 50],
+    [200, 200, 600, 200],
+    [600, 200, 600, 400],
+    [600, 400, 200, 400],
+    [200, 400, 200, 200]
+  ],
+  "startLine": {
+    "x1": 100,
+    "y1": 300,
+    "x2": 100,
+    "y2": 350,
+    "norm": [1, 0]
   }
 }

@@ -1,23 +1,27 @@
-import { CarModel, CarPhysicsState } from '../physics/CarModel';
-import { Track, TrackZone } from '../track/Track';
+/**
+ * Simplified Collision system
+ * 
+ * Implements segment-circle collision detection for car vs walls
+ */
+
+import { CarModel } from '../physics/CarModel';
+import { Track } from '../track/Track';
 
 export interface CollisionResult {
+  /** Whether a collision occurred */
   hasCollision: boolean;
-  collisionType: 'barrier' | 'checkpoint' | 'finish' | 'none';
+  /** Collision point */
   collisionPoint?: { x: number; y: number };
+  /** Collision normal vector */
   collisionNormal?: { x: number; y: number };
+  /** Penetration depth */
   penetrationDepth?: number;
-  zone?: TrackZone;
 }
 
-export interface CarBounds {
-  center: { x: number; y: number };
-  width: number;
-  height: number;
-  angle: number;
-}
-
-export class CollisionSystem {
+/**
+ * Simplified Collision system
+ */
+export class Collision {
   private track: Track | null = null;
 
   constructor(track?: Track) {
@@ -25,411 +29,172 @@ export class CollisionSystem {
   }
 
   /**
-   * Set the current track for collision detection
+   * Sets the track for collision detection
+   * @param track - Track instance
    */
   setTrack(track: Track): void {
     this.track = track;
   }
 
   /**
-   * Resolve barrier collision for a car
+   * Resolves barrier collision using segment-circle test
+   * @param car - Car model to check collision for
+   * @returns Collision result
    */
   resolveBarrierCollision(car: CarModel): CollisionResult {
     if (!this.track) {
-      return { hasCollision: false, collisionType: 'none' };
+      return { hasCollision: false };
     }
 
     const carState = car.getState();
-    const carBounds = this.getCarBounds(carState);
+    const carRadius = 1.0; // Car radius in meters
+    const walls = this.track.getWalls();
 
-    // Check for collisions with all collidable zones
-    const collidableZones = this.track
-      .getZones()
-      .filter(zone => zone.properties.isCollidable);
+    // Check collision with each wall segment
+    for (const wall of walls) {
+      const [x1, y1, x2, y2] = wall;
+      const collision = this.segmentCircleCollision(
+        x1, y1, x2, y2,
+        carState.position.x, carState.position.y, carRadius
+      );
 
-    for (const zone of collidableZones) {
-      const collision = this.checkCarZoneCollision(carBounds, zone);
       if (collision.hasCollision) {
-        this.resolveCarCollision(car, collision);
+        // Push car out along normal
+        const pushDistance = collision.penetrationDepth! + 0.1; // Small buffer
+        const newX = carState.position.x + collision.collisionNormal!.x * pushDistance;
+        const newY = carState.position.y + collision.collisionNormal!.y * pushDistance;
+
+        // Update car position
+        car.setState({
+          ...carState,
+          position: { x: newX, y: newY },
+        });
+
+        // Reflect velocity by -0.4 factor
+        const velocityDot = carState.velocity.x * collision.collisionNormal!.x + 
+                           carState.velocity.y * collision.collisionNormal!.y;
+        
+        if (velocityDot > 0) {
+          const newVelocityX = carState.velocity.x - collision.collisionNormal!.x * velocityDot * 1.4;
+          const newVelocityY = carState.velocity.y - collision.collisionNormal!.y * velocityDot * 1.4;
+
+          car.setState({
+            ...car.getState(),
+            velocity: { x: newVelocityX, y: newVelocityY },
+          });
+        }
+
         return collision;
       }
     }
 
-    return { hasCollision: false, collisionType: 'none' };
+    return { hasCollision: false };
   }
 
   /**
-   * Check collision between car bounds and a track zone
+   * Tests collision between a line segment and a circle
+   * @param x1 - Line start X
+   * @param y1 - Line start Y
+   * @param x2 - Line end X
+   * @param y2 - Line end Y
+   * @param cx - Circle center X
+   * @param cy - Circle center Y
+   * @param radius - Circle radius
+   * @returns Collision result
    */
-  private checkCarZoneCollision(
-    carBounds: CarBounds,
-    zone: TrackZone
+  private segmentCircleCollision(
+    x1: number, y1: number,
+    x2: number, y2: number,
+    cx: number, cy: number,
+    radius: number
   ): CollisionResult {
-    switch (zone.geometry.type) {
-      case 'rectangle':
-        return this.checkCarRectangleCollision(carBounds, zone);
-      case 'circle':
-        return this.checkCarCircleCollision(carBounds, zone);
-      case 'polygon':
-        return this.checkCarPolygonCollision(carBounds, zone);
-      default:
-        return { hasCollision: false, collisionType: 'none' };
-    }
-  }
+    // Vector from line start to end
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lineLength = Math.sqrt(dx * dx + dy * dy);
 
-  /**
-   * Check collision between car and rectangle zone
-   */
-  private checkCarRectangleCollision(
-    carBounds: CarBounds,
-    zone: TrackZone
-  ): CollisionResult {
-    if (
-      zone.geometry.type !== 'rectangle' ||
-      !zone.geometry.width ||
-      !zone.geometry.height ||
-      zone.geometry.points.length === 0
-    ) {
-      return { hasCollision: false, collisionType: 'none' };
-    }
-
-    const zoneTopLeft = zone.geometry.points[0];
-    if (!zoneTopLeft) return { hasCollision: false, collisionType: 'none' };
-
-    const zoneRight = zoneTopLeft.x + zone.geometry.width;
-    const zoneBottom = zoneTopLeft.y + zone.geometry.height;
-
-    // Get car corners
-    const carCorners = this.getCarCorners(carBounds);
-
-    // Check if any car corner is inside the zone
-    for (const corner of carCorners) {
-      if (
-        corner.x >= zoneTopLeft.x &&
-        corner.x <= zoneRight &&
-        corner.y >= zoneTopLeft.y &&
-        corner.y <= zoneBottom
-      ) {
-        // Calculate collision normal and penetration
-        const collisionInfo = this.calculateRectangleCollisionInfo(
-          carBounds,
-          zone
-        );
-
+    if (lineLength === 0) {
+      // Line segment is a point
+      const distance = Math.sqrt((cx - x1) ** 2 + (cy - y1) ** 2);
+      if (distance <= radius) {
+        const normal = this.normalize(cx - x1, cy - y1);
         return {
           hasCollision: true,
-          collisionType: zone.type === 'barrier' ? 'barrier' : 'none',
-          collisionPoint: { x: corner.x, y: corner.y },
-          collisionNormal: collisionInfo.normal,
-          penetrationDepth: collisionInfo.penetration,
-          zone: zone,
+          collisionPoint: { x: x1, y: y1 },
+          collisionNormal: normal,
+          penetrationDepth: radius - distance,
         };
       }
+      return { hasCollision: false };
     }
 
-    return { hasCollision: false, collisionType: 'none' };
-  }
+    // Normalize line direction
+    const lineDirX = dx / lineLength;
+    const lineDirY = dy / lineLength;
 
-  /**
-   * Check collision between car and circle zone
-   */
-  private checkCarCircleCollision(
-    carBounds: CarBounds,
-    zone: TrackZone
-  ): CollisionResult {
-    if (
-      zone.geometry.type !== 'circle' ||
-      !zone.geometry.radius ||
-      zone.geometry.points.length === 0
-    ) {
-      return { hasCollision: false, collisionType: 'none' };
-    }
+    // Vector from line start to circle center
+    const toCircleX = cx - x1;
+    const toCircleY = cy - y1;
 
-    const zoneCenter = zone.geometry.points[0];
-    if (!zoneCenter) return { hasCollision: false, collisionType: 'none' };
+    // Project circle center onto line
+    const projection = toCircleX * lineDirX + toCircleY * lineDirY;
+    const clampedProjection = Math.max(0, Math.min(lineLength, projection));
 
-    const zoneRadius = zone.geometry.radius;
+    // Closest point on line segment to circle center
+    const closestX = x1 + clampedProjection * lineDirX;
+    const closestY = y1 + clampedProjection * lineDirY;
 
-    // Check if car center is within circle
-    const distance = Math.sqrt(
-      Math.pow(carBounds.center.x - zoneCenter.x, 2) +
-        Math.pow(carBounds.center.y - zoneCenter.y, 2)
-    );
+    // Distance from circle center to closest point on line
+    const distance = Math.sqrt((cx - closestX) ** 2 + (cy - closestY) ** 2);
 
-    if (distance <= zoneRadius) {
-      const penetration = zoneRadius - distance;
-      const normal = {
-        x: (carBounds.center.x - zoneCenter.x) / distance,
-        y: (carBounds.center.y - zoneCenter.y) / distance,
-      };
-
+    if (distance <= radius) {
+      // Collision detected
+      const normal = this.normalize(cx - closestX, cy - closestY);
       return {
         hasCollision: true,
-        collisionType: zone.type === 'barrier' ? 'barrier' : 'none',
-        collisionPoint: { x: carBounds.center.x, y: carBounds.center.y },
+        collisionPoint: { x: closestX, y: closestY },
         collisionNormal: normal,
-        penetrationDepth: penetration,
-        zone: zone,
+        penetrationDepth: radius - distance,
       };
     }
 
-    return { hasCollision: false, collisionType: 'none' };
+    return { hasCollision: false };
   }
 
   /**
-   * Check collision between car and polygon zone
+   * Normalizes a vector to unit length
+   * @param x - Vector X component
+   * @param y - Vector Y component
+   * @returns Normalized vector
    */
-  private checkCarPolygonCollision(
-    carBounds: CarBounds,
-    zone: TrackZone
-  ): CollisionResult {
-    if (zone.geometry.type !== 'polygon') {
-      return { hasCollision: false, collisionType: 'none' };
-    }
-
-    const carCorners = this.getCarCorners(carBounds);
-
-    // Check if any car corner is inside the polygon
-    for (const corner of carCorners) {
-      if (this.isPointInPolygon(corner.x, corner.y, zone.geometry.points)) {
-        return {
-          hasCollision: true,
-          collisionType: zone.type === 'barrier' ? 'barrier' : 'none',
-          collisionPoint: { x: corner.x, y: corner.y },
-          zone: zone,
-        };
-      }
-    }
-
-    return { hasCollision: false, collisionType: 'none' };
-  }
-
-  /**
-   * Get car bounding box
-   */
-  private getCarBounds(carState: CarPhysicsState): CarBounds {
-    return {
-      center: { ...carState.position },
-      width: 20, // Car width
-      height: 40, // Car height
-      angle: carState.angle,
-    };
-  }
-
-  /**
-   * Get car corner positions
-   */
-  private getCarCorners(carBounds: CarBounds): Array<{ x: number; y: number }> {
-    const halfWidth = carBounds.width / 2;
-    const halfHeight = carBounds.height / 2;
-    const cos = Math.cos(carBounds.angle);
-    const sin = Math.sin(carBounds.angle);
-
-    const corners = [
-      { x: -halfWidth, y: -halfHeight },
-      { x: halfWidth, y: -halfHeight },
-      { x: halfWidth, y: halfHeight },
-      { x: -halfWidth, y: halfHeight },
-    ];
-
-    return corners.map(corner => ({
-      x: carBounds.center.x + (corner.x * cos - corner.y * sin),
-      y: carBounds.center.y + (corner.x * sin + corner.y * cos),
-    }));
-  }
-
-  /**
-   * Calculate collision information for rectangle collision
-   */
-  private calculateRectangleCollisionInfo(
-    carBounds: CarBounds,
-    zone: TrackZone
-  ): {
-    normal: { x: number; y: number };
-    penetration: number;
-  } {
-    if (
-      zone.geometry.type !== 'rectangle' ||
-      !zone.geometry.width ||
-      !zone.geometry.height ||
-      zone.geometry.points.length === 0
-    ) {
-      return { normal: { x: 0, y: 0 }, penetration: 0 };
-    }
-
-    const zoneTopLeft = zone.geometry.points[0];
-    if (!zoneTopLeft) return { normal: { x: 0, y: 0 }, penetration: 0 };
-
-    const zoneRight = zoneTopLeft.x + zone.geometry.width;
-    const zoneBottom = zoneTopLeft.y + zone.geometry.height;
-
-    const carCenter = carBounds.center;
-    const halfWidth = carBounds.width / 2;
-    const halfHeight = carBounds.height / 2;
-
-    // Calculate distances to each edge
-    const distToLeft = Math.abs(carCenter.x - zoneTopLeft.x);
-    const distToRight = Math.abs(carCenter.x - zoneRight);
-    const distToTop = Math.abs(carCenter.y - zoneTopLeft.y);
-    const distToBottom = Math.abs(carCenter.y - zoneBottom);
-
-    // Find the minimum distance (collision normal direction)
-    const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
-
-    let normal = { x: 0, y: 0 };
-    let penetration = 0;
-
-    if (minDist === distToLeft) {
-      normal = { x: -1, y: 0 };
-      penetration = halfWidth - distToLeft;
-    } else if (minDist === distToRight) {
-      normal = { x: 1, y: 0 };
-      penetration = halfWidth - distToRight;
-    } else if (minDist === distToTop) {
-      normal = { x: 0, y: -1 };
-      penetration = halfHeight - distToTop;
-    } else if (minDist === distToBottom) {
-      normal = { x: 0, y: 1 };
-      penetration = halfHeight - distToBottom;
-    }
-
-    return { normal, penetration };
-  }
-
-  /**
-   * Check if point is inside polygon
-   */
-  private isPointInPolygon(
-    x: number,
-    y: number,
-    points: Array<{ x: number; y: number }>
-  ): boolean {
-    let inside = false;
-
-    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-      const pointI = points[i];
-      const pointJ = points[j];
-
-      if (!pointI || !pointJ) continue;
-
-      const xi = pointI.x;
-      const yi = pointI.y;
-      const xj = pointJ.x;
-      const yj = pointJ.y;
-
-      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
-        inside = !inside;
-      }
-    }
-
-    return inside;
-  }
-
-  /**
-   * Resolve car collision by adjusting position and velocity
-   */
-  private resolveCarCollision(car: CarModel, collision: CollisionResult): void {
-    if (!collision.collisionNormal || !collision.penetrationDepth) {
-      return;
-    }
-
-    const carState = car.getState();
-    const normal = collision.collisionNormal;
-    const penetration = collision.penetrationDepth;
-
-    // Separate the car from the collision
-    const separationX = normal.x * penetration;
-    const separationY = normal.y * penetration;
-
-    // Update car position
-    car.setState({
-      ...carState,
-      position: {
-        x: carState.position.x + separationX,
-        y: carState.position.y + separationY,
-      },
-    });
-
-    // Reduce velocity in collision direction
-    const velocityDot =
-      carState.velocity.x * normal.x + carState.velocity.y * normal.y;
-    if (velocityDot > 0) {
-      const newVelocityX = carState.velocity.x - normal.x * velocityDot * 0.8;
-      const newVelocityY = carState.velocity.y - normal.y * velocityDot * 0.8;
-
-      car.setState({
-        ...car.getState(),
-        velocity: { x: newVelocityX, y: newVelocityY },
-      });
-    }
-  }
-
-  /**
-   * Check for checkpoint collisions
-   */
-  checkCheckpointCollision(car: CarModel): CollisionResult {
-    if (!this.track) {
-      return { hasCollision: false, collisionType: 'none' };
-    }
-
-    const carState = car.getState();
-    const checkpoint = this.track.getCheckpointAt(
-      carState.position.x,
-      carState.position.y
-    );
-
-    if (checkpoint) {
-      return {
-        hasCollision: true,
-        collisionType: 'checkpoint',
-        collisionPoint: checkpoint.position,
-      };
-    }
-
-    return { hasCollision: false, collisionType: 'none' };
-  }
-
-  /**
-   * Check for finish line collision
-   */
-  checkFinishLineCollision(car: CarModel): CollisionResult {
-    if (!this.track) {
-      return { hasCollision: false, collisionType: 'none' };
-    }
-
-    const carState = car.getState();
-    const finishZones = this.track
-      .getZones()
-      .filter(zone => zone.type === 'finishLine');
-
-    for (const zone of finishZones) {
-      const collision = this.checkCarZoneCollision(
-        this.getCarBounds(carState),
-        zone
-      );
-      if (collision.hasCollision) {
-        return {
-          ...collision,
-          collisionType: 'finish',
-        };
-      }
-    }
-
-    return { hasCollision: false, collisionType: 'none' };
+  private normalize(x: number, y: number): { x: number; y: number } {
+    const length = Math.sqrt(x * x + y * y);
+    if (length === 0) return { x: 0, y: 0 };
+    return { x: x / length, y: y / length };
   }
 }
 
-// Singleton instance
-let collisionSystem: CollisionSystem | null = null;
+/**
+ * Creates a new collision system
+ * @param track - Optional track instance
+ * @returns Collision system
+ */
+export function createCollisionSystem(track?: Track): Collision {
+  return new Collision(track);
+}
 
-export const getCollisionSystem = (): CollisionSystem => {
+/**
+ * Singleton collision system instance
+ */
+let collisionSystem: Collision | null = null;
+
+/**
+ * Gets the global collision system instance
+ * @returns Collision system
+ */
+export function getCollisionSystem(): Collision {
   if (!collisionSystem) {
-    collisionSystem = new CollisionSystem();
+    collisionSystem = new Collision();
   }
   return collisionSystem;
-};
-
-// Helper function to create collision system with track
-export const createCollisionSystem = (track: Track): CollisionSystem => {
-  return new CollisionSystem(track);
-};
+}

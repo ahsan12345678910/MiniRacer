@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// SIMPLIFIED SETTINGS SCREEN - Basic version without complex dependencies
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,182 +10,65 @@ import {
   ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useGameStore } from '../game/store/GameStore';
-import { useClickSound } from '../audio/useAudio';
 
-const SETTINGS_STORAGE_KEY = 'race_game_settings';
-const BEST_LAP_STORAGE_KEY = 'race_game_best_lap';
-
-interface GameSettings {
-  inputMode: 'touchZones' | 'virtualJoystick';
+// Simple settings interface
+interface SimpleSettings {
   soundEnabled: boolean;
   musicEnabled: boolean;
-  touchZones: {
-    brakeButtonSize: number;
-    brakeButtonMargin: number;
-  };
-  virtualJoystick: {
-    size: number;
-    deadZone: number;
-    maxDistance: number;
-    position: 'left' | 'right';
-  };
+  controlMode: 'buttons' | 'touch';
 }
 
-const SettingsScreen: React.FC = () => {
+const SimpleSettingsScreen: React.FC = () => {
   const navigation = useNavigation();
-  const settings = useGameStore(state => state.settings);
-  const updateSettings = useGameStore(state => state.updateSettings);
-  const { playClickSound } = useClickSound();
-
-  const [localSettings, setLocalSettings] = useState<GameSettings>(settings);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
-    try {
-      const savedSettings = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (savedSettings) {
-        const parsedSettings = JSON.parse(savedSettings);
-        setLocalSettings(parsedSettings);
-        updateSettings(parsedSettings);
-      }
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const saveSettings = async (newSettings: GameSettings) => {
-    try {
-      await AsyncStorage.setItem(
-        SETTINGS_STORAGE_KEY,
-        JSON.stringify(newSettings)
-      );
-      setLocalSettings(newSettings);
-      updateSettings(newSettings);
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-      Alert.alert('Error', 'Failed to save settings');
-    }
-  };
-
-  const handleInputModeChange = (mode: 'touchZones' | 'virtualJoystick') => {
-    playClickSound();
-    const newSettings = { ...localSettings, inputMode: mode };
-    saveSettings(newSettings);
-  };
+  const [settings, setSettings] = useState<SimpleSettings>({
+    soundEnabled: true,
+    musicEnabled: true,
+    controlMode: 'buttons',
+  });
 
   const handleSoundToggle = (enabled: boolean) => {
-    playClickSound();
-    const newSettings = { ...localSettings, soundEnabled: enabled };
-    saveSettings(newSettings);
+    console.log('Sound toggled:', enabled);
+    setSettings(prev => ({ ...prev, soundEnabled: enabled }));
   };
 
   const handleMusicToggle = (enabled: boolean) => {
-    playClickSound();
-    const newSettings = { ...localSettings, musicEnabled: enabled };
-    saveSettings(newSettings);
+    console.log('Music toggled:', enabled);
+    setSettings(prev => ({ ...prev, musicEnabled: enabled }));
   };
 
-  const handleResetBestLap = () => {
-    playClickSound();
+  const handleControlModeChange = (mode: 'buttons' | 'touch') => {
+    console.log('Control mode changed:', mode);
+    setSettings(prev => ({ ...prev, controlMode: mode }));
+  };
+
+  const handleResetSettings = () => {
     Alert.alert(
-      'Reset Best Lap',
-      'Are you sure you want to reset your best lap time? This action cannot be undone.',
+      'Reset Settings',
+      'Are you sure you want to reset all settings to default?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Reset',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await AsyncStorage.removeItem(BEST_LAP_STORAGE_KEY);
-              Alert.alert('Success', 'Best lap time has been reset');
-            } catch (error) {
-              console.error('Failed to reset best lap:', error);
-              Alert.alert('Error', 'Failed to reset best lap time');
-            }
+          onPress: () => {
+            setSettings({
+              soundEnabled: true,
+              musicEnabled: true,
+              controlMode: 'buttons',
+            });
+            Alert.alert('Success', 'Settings have been reset to default');
           },
         },
       ]
     );
   };
-
-  const handleResetAllSettings = () => {
-    playClickSound();
-    Alert.alert(
-      'Reset All Settings',
-      'Are you sure you want to reset all settings to default values?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const defaultSettings: GameSettings = {
-                inputMode: 'touchZones',
-                soundEnabled: true,
-                musicEnabled: true,
-                touchZones: {
-                  brakeButtonSize: 80,
-                  brakeButtonMargin: 20,
-                },
-                virtualJoystick: {
-                  size: 120,
-                  deadZone: 10,
-                  maxDistance: 60,
-                  position: 'left',
-                },
-              };
-              await AsyncStorage.setItem(
-                SETTINGS_STORAGE_KEY,
-                JSON.stringify(defaultSettings)
-              );
-              setLocalSettings(defaultSettings);
-              updateSettings(defaultSettings);
-              Alert.alert('Success', 'All settings have been reset to default');
-            } catch (error) {
-              console.error('Failed to reset settings:', error);
-              Alert.alert('Error', 'Failed to reset settings');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.navigate('Menu' as never)}
-          >
-            <Text style={styles.backButtonText}>← Back to Menu</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Settings</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading settings...</Text>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.navigate('Menu' as never)}
+          onPress={() => navigation.goBack()}
         >
           <Text style={styles.backButtonText}>← Back to Menu</Text>
         </TouchableOpacity>
@@ -210,37 +94,33 @@ const SettingsScreen: React.FC = () => {
               <TouchableOpacity
                 style={[
                   styles.controlModeButton,
-                  localSettings.inputMode === 'touchZones' &&
-                    styles.controlModeButtonActive,
+                  settings.controlMode === 'buttons' && styles.controlModeButtonActive,
                 ]}
-                onPress={() => handleInputModeChange('touchZones')}
+                onPress={() => handleControlModeChange('buttons')}
               >
                 <Text
                   style={[
                     styles.controlModeButtonText,
-                    localSettings.inputMode === 'touchZones' &&
-                      styles.controlModeButtonTextActive,
+                    settings.controlMode === 'buttons' && styles.controlModeButtonTextActive,
                   ]}
                 >
-                  Touch Zones
+                  Buttons
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.controlModeButton,
-                  localSettings.inputMode === 'virtualJoystick' &&
-                    styles.controlModeButtonActive,
+                  settings.controlMode === 'touch' && styles.controlModeButtonActive,
                 ]}
-                onPress={() => handleInputModeChange('virtualJoystick')}
+                onPress={() => handleControlModeChange('touch')}
               >
                 <Text
                   style={[
                     styles.controlModeButtonText,
-                    localSettings.inputMode === 'virtualJoystick' &&
-                      styles.controlModeButtonTextActive,
+                    settings.controlMode === 'touch' && styles.controlModeButtonTextActive,
                   ]}
                 >
-                  Virtual Joystick
+                  Touch
                 </Text>
               </TouchableOpacity>
             </View>
@@ -259,10 +139,10 @@ const SettingsScreen: React.FC = () => {
               </Text>
             </View>
             <Switch
-              value={localSettings.soundEnabled}
+              value={settings.soundEnabled}
               onValueChange={handleSoundToggle}
               trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={localSettings.soundEnabled ? '#f5dd4b' : '#f4f3f4'}
+              thumbColor={settings.soundEnabled ? '#f5dd4b' : '#f4f3f4'}
             />
           </View>
 
@@ -274,10 +154,10 @@ const SettingsScreen: React.FC = () => {
               </Text>
             </View>
             <Switch
-              value={localSettings.musicEnabled}
+              value={settings.musicEnabled}
               onValueChange={handleMusicToggle}
               trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={localSettings.musicEnabled ? '#f5dd4b' : '#f4f3f4'}
+              thumbColor={settings.musicEnabled ? '#f5dd4b' : '#f4f3f4'}
             />
           </View>
         </View>
@@ -288,17 +168,7 @@ const SettingsScreen: React.FC = () => {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={handleResetBestLap}
-          >
-            <Text style={styles.actionButtonText}>Reset Best Lap Time</Text>
-            <Text style={styles.actionButtonDescription}>
-              Clear your personal best lap record
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={handleResetAllSettings}
+            onPress={handleResetSettings}
           >
             <Text style={styles.actionButtonText}>Reset All Settings</Text>
             <Text style={styles.actionButtonDescription}>
@@ -312,11 +182,11 @@ const SettingsScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>About</Text>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Game Version</Text>
-            <Text style={styles.infoValue}>1.0.0</Text>
+            <Text style={styles.infoValue}>1.0.0 (Simplified)</Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Settings Status</Text>
-            <Text style={styles.infoValue}>Saved</Text>
+            <Text style={styles.infoValue}>In Memory</Text>
           </View>
         </View>
       </ScrollView>
@@ -352,16 +222,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 28,
     fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '500',
   },
   settingsContainer: {
     flex: 1,
@@ -471,4 +331,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SettingsScreen;
+export default SimpleSettingsScreen;

@@ -48,6 +48,9 @@ npm install
 # Start the development server
 npm start
 
+# After making changes to babel.config.js, clear cache and restart
+expo start -c
+
 # Run on specific platforms
 npm run ios     # iOS Simulator
 npm run android # Android Emulator
