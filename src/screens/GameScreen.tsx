@@ -22,6 +22,7 @@ const GameScreen: React.FC = () => {
     lapData, 
     isGameRunning, 
     isPaused,
+    settings,
     startGame, 
     pauseGame, 
     resumeGame,
@@ -35,6 +36,8 @@ const GameScreen: React.FC = () => {
 
   const [gameIntegration, setGameIntegration] = useState<GameIntegration | null>(null);
   const [lapSystem, setLapSystem] = useState<LapSystem | null>(null);
+  const [joystickPosition, setJoystickPosition] = useState({ x: 0, y: 0 });
+  const [isJoystickActive, setIsJoystickActive] = useState(false);
   const gameLoopRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
   const carPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -100,10 +103,17 @@ const GameScreen: React.FC = () => {
     onMoveShouldSetPanResponder: () => true,
     onPanResponderGrant: (evt) => {
       const { locationX, locationY } = evt.nativeEvent;
+      if (settings.inputMode === 'virtualJoystick') {
+        setIsJoystickActive(true);
+        setJoystickPosition({ x: locationX, y: locationY });
+      }
       handleTouchInput(locationX, locationY, true);
     },
     onPanResponderMove: (evt) => {
       const { locationX, locationY } = evt.nativeEvent;
+      if (settings.inputMode === 'virtualJoystick') {
+        setJoystickPosition({ x: locationX, y: locationY });
+      }
       handleTouchInput(locationX, locationY, false);
     },
     onPanResponderRelease: () => {
@@ -111,6 +121,10 @@ const GameScreen: React.FC = () => {
       accelerate(0);
       brake(0);
       turn(0);
+      if (settings.inputMode === 'virtualJoystick') {
+        setIsJoystickActive(false);
+        setJoystickPosition({ x: 0, y: 0 });
+      }
     },
   });
 
@@ -118,18 +132,40 @@ const GameScreen: React.FC = () => {
     const centerX = screenWidth / 2;
     const centerY = screenHeight / 2;
     
-    // Simple touch controls - left side for steering, right side for acceleration
-    if (x < centerX) {
-      // Left side - steering
-      const steerAmount = (centerX - x) / centerX;
-      turn(steerAmount * 0.1);
+    // Apply settings-based control mode
+    if (settings.inputMode === 'touchZones') {
+      // Touch zones mode - left side for steering, right side for acceleration
+      if (x < centerX) {
+        // Left side - steering
+        const steerAmount = (centerX - x) / centerX;
+        turn(steerAmount * 0.1);
+      } else {
+        // Right side - acceleration
+        const accelAmount = (x - centerX) / centerX;
+        if (accelAmount > 0.3) {
+          accelerate(accelAmount * 100);
+        } else if (accelAmount < -0.3) {
+          brake(Math.abs(accelAmount) * 100);
+        }
+      }
     } else {
-      // Right side - acceleration
-      const accelAmount = (x - centerX) / centerX;
-      if (accelAmount > 0.3) {
-        accelerate(accelAmount * 100);
-      } else if (accelAmount < -0.3) {
-        brake(Math.abs(accelAmount) * 100);
+      // Virtual joystick mode - different control scheme
+      const deltaX = x - centerX;
+      const deltaY = y - centerY;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      if (distance > settings.virtualJoystick.deadZone) {
+        // Steering based on horizontal movement
+        const steerAmount = Math.max(-1, Math.min(1, deltaX / (screenWidth * 0.3)));
+        turn(steerAmount * 0.1);
+        
+        // Acceleration based on vertical movement
+        const accelAmount = Math.max(-1, Math.min(1, -deltaY / (screenHeight * 0.3)));
+        if (accelAmount > 0.1) {
+          accelerate(accelAmount * 100);
+        } else if (accelAmount < -0.1) {
+          brake(Math.abs(accelAmount) * 100);
+        }
       }
     }
   };
@@ -243,11 +279,28 @@ const GameScreen: React.FC = () => {
         </View>
       </View>
 
+      {/* Virtual Joystick Visual */}
+      {settings.inputMode === 'virtualJoystick' && isJoystickActive && (
+        <View style={styles.joystickContainer}>
+          <View style={[styles.joystickBase, { 
+            left: joystickPosition.x - settings.virtualJoystick.size / 2,
+            top: joystickPosition.y - settings.virtualJoystick.size / 2,
+          }]} />
+          <View style={[styles.joystickKnob, { 
+            left: joystickPosition.x - 15,
+            top: joystickPosition.y - 15,
+          }]} />
+        </View>
+      )}
+
       {/* Touch Controls */}
       <View style={styles.touchControls} {...panResponder.panHandlers}>
         <View style={styles.controlHint}>
           <Text style={styles.controlHintText}>
-            Touch left side to steer, right side to accelerate
+            {settings.inputMode === 'touchZones' 
+              ? 'Touch left side to steer, right side to accelerate'
+              : 'Touch and drag to control steering and acceleration'
+            }
           </Text>
         </View>
       </View>
@@ -419,6 +472,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 8,
+  },
+  joystickContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none',
+  },
+  joystickBase: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  joystickKnob: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 });
 
