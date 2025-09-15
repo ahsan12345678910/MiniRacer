@@ -249,6 +249,12 @@ interface CarProps {
   width?: number;
   height?: number;
   showShadow?: boolean;
+  color?: string;
+  borderColor?: string;
+  windowColor?: string;
+  headlightColor?: string;
+  wheelColor?: string;
+  spoilerColor?: string;
 }
 
 export const Car: React.FC<CarProps> = ({
@@ -259,6 +265,12 @@ export const Car: React.FC<CarProps> = ({
   width = 40,
   height = 20,
   showShadow = true,
+  color = '#FF4444',
+  borderColor = '#CC3333',
+  windowColor = 'rgba(135, 206, 250, 0.8)',
+  headlightColor = '#FFFF99',
+  wheelColor = '#333333',
+  spoilerColor = '#222222',
 }) => {
   const [cameraState, setCameraState] = useState<CameraState>(camera.getState());
 
@@ -308,25 +320,27 @@ export const Car: React.FC<CarProps> = ({
             top: screenPos.y - height / 2,
             width,
             height,
+            backgroundColor: color,
+            borderColor,
             transform: [{ rotate: `${angle * 180 / Math.PI}deg` }],
           },
         ]}
       >
         {/* Car Windows */}
-        <View style={styles.carWindows} />
+        <View style={[styles.carWindows, { backgroundColor: windowColor }]} />
         
         {/* Car Headlights */}
-        <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
-        <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
+        <View style={[styles.carHeadlight, styles.carHeadlightLeft, { backgroundColor: headlightColor }]} />
+        <View style={[styles.carHeadlight, styles.carHeadlightRight, { backgroundColor: headlightColor }]} />
         
         {/* Car Wheels */}
-        <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
-        <View style={[styles.carWheel, styles.carWheelFrontRight]} />
-        <View style={[styles.carWheel, styles.carWheelRearLeft]} />
-        <View style={[styles.carWheel, styles.carWheelRearRight]} />
+        <View style={[styles.carWheel, styles.carWheelFrontLeft, { backgroundColor: wheelColor }]} />
+        <View style={[styles.carWheel, styles.carWheelFrontRight, { backgroundColor: wheelColor }]} />
+        <View style={[styles.carWheel, styles.carWheelRearLeft, { backgroundColor: wheelColor }]} />
+        <View style={[styles.carWheel, styles.carWheelRearRight, { backgroundColor: wheelColor }]} />
         
         {/* Car Spoiler */}
-        <View style={styles.carSpoiler} />
+        <View style={[styles.carSpoiler, { backgroundColor: spoilerColor }]} />
       </View>
     </>
   );

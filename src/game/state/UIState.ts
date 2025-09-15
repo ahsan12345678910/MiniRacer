@@ -29,14 +29,25 @@ interface UIActions {
 
 type UIStore = UIState & UIActions;
 
-// Throttle utility
+// Throttle utility with better caching
 let lastUpdateTime = 0;
+let lastSnapshot: { speedKmh: number; lap: string; bestMs: number } | null = null;
 const THROTTLE_MS = 100; // Update UI at most every 100ms
 
-const throttledUpdate = (callback: () => void) => {
+const throttledUpdate = (callback: () => void, newSnapshot: { speedKmh: number; lap: string; bestMs: number }) => {
   const now = Date.now();
+  
+  // Check if data has actually changed
+  if (lastSnapshot && 
+      lastSnapshot.speedKmh === newSnapshot.speedKmh && 
+      lastSnapshot.lap === newSnapshot.lap && 
+      lastSnapshot.bestMs === newSnapshot.bestMs) {
+    return; // No change, skip update
+  }
+  
   if (now - lastUpdateTime >= THROTTLE_MS) {
     lastUpdateTime = now;
+    lastSnapshot = { ...newSnapshot };
     callback();
   }
 };
@@ -63,7 +74,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
         lapDisplay: lap,
         bestDisplay,
       });
-    });
+    }, data);
   },
 
   setPaused: (paused) => set({ paused }),
@@ -91,9 +102,7 @@ export const useBestDisplay = () => useUIStore((state) => state.bestDisplay, sha
 export const usePaused = () => useUIStore((state) => state.paused, shallow);
 export const useUISettings = () => useUIStore((state) => state.settings, shallow);
 
-// Action hooks
-export const useUIActions = () => useUIStore((state) => ({
-  setSnapshot: state.setSnapshot,
-  setPaused: state.setPaused,
-  updateSettings: state.updateSettings,
-}), shallow);
+// Action hooks - use individual selectors to prevent object recreation
+export const useSetSnapshot = () => useUIStore((state) => state.setSnapshot);
+export const useSetPaused = () => useUIStore((state) => state.setPaused);
+export const useUpdateSettings = () => useUIStore((state) => state.updateSettings);

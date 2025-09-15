@@ -12,8 +12,13 @@ const MenuScreen: React.FC = () => {
   const handlePlay = () => {
     // SIMPLIFIED: Removed audio call
     // playClickSound();
-    console.log('Play button pressed');
+    console.log('Play button pressed - MultiCar Racing');
     navigation.navigate('Game' as never);
+  };
+
+  const handleTestCars = () => {
+    console.log('Test Cars button pressed');
+    navigation.navigate('TestCars' as never);
   };
 
   const handleSettings = () => {
@@ -42,7 +47,10 @@ const MenuScreen: React.FC = () => {
       <Text style={styles.title}>MiniRacer</Text>
       <View style={styles.menuContainer}>
         <TouchableOpacity style={styles.menuButton} onPress={handlePlay}>
-          <Text style={styles.buttonText}>Play</Text>
+          <Text style={styles.buttonText}>🏁 MultiCar Racing</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.menuButton, styles.testButton]} onPress={handleTestCars}>
+          <Text style={styles.buttonText}>🚗 Test Cars</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuButton} onPress={handleSettings}>
           <Text style={styles.buttonText}>Settings</Text>
@@ -93,6 +101,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  testButton: {
+    backgroundColor: '#FF6B35',
   },
   quitButton: {
     backgroundColor: '#8b0000',

@@ -12,7 +12,7 @@ import { GameCore, makeInitialGame, resetCarAtStart } from '../game/state/GameSt
 import { loadTrack } from '../game/world/TrackLoader';
 import { updateCar, SURFACE_TYPES } from '../game/physics/CarModel';
 import { controlsRef } from '../game/input/InputManager';
-import { useUIStore } from '../game/state/UIState';
+import { useSetSnapshot, useSetPaused, usePaused } from '../game/state/UIState';
 import { TouchZones, ButtonsPad, VirtualJoystick } from '../game/input/InputManager';
 import { HUD } from '../ui/HUD';
 import { CameraView, TrackTile, Car, CameraControls } from '../ui/Camera';
@@ -34,7 +34,9 @@ const CameraGameScreen: React.FC = () => {
   const [cameraControlsVisible, setCameraControlsVisible] = useState(false);
 
   // UI store
-  const { setSnapshot, setPaused, paused } = useUIStore();
+  const setSnapshot = useSetSnapshot();
+  const setPaused = useSetPaused();
+  const paused = usePaused();
 
   // Load track on mount
   useEffect(() => {

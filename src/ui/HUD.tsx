@@ -5,7 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { useSpeedDisplay, useLapDisplay, useBestDisplay, usePaused, useUIActions } from '../game/state/UIState';
+import { useSpeedDisplay, useLapDisplay, useBestDisplay, usePaused, useSetPaused } from '../game/state/UIState';
 
 interface HUDProps {
   onPause?: () => void;
@@ -17,7 +17,7 @@ export const HUD: React.FC<HUDProps> = React.memo(({ onPause, onMenu }) => {
   const lapDisplay = useLapDisplay();
   const bestDisplay = useBestDisplay();
   const paused = usePaused();
-  const { setPaused } = useUIActions();
+  const setPaused = useSetPaused();
 
   const handlePause = () => {
     setPaused(!paused);

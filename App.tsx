@@ -9,8 +9,9 @@ import { StatusBar } from 'expo-status-bar';
 // Import screens
 import SplashScreen from './src/screens/SplashScreen';
 import MenuScreen from './src/screens/MenuScreen';
-// SIMPLIFIED: Using simple game screen instead of complex one
-import SimpleGameScreen from './src/screens/SimpleGameScreen';
+// Using MultiCarGameScreen for racing with AI cars
+import MultiCarGameScreen from './src/screens/MultiCarGameScreen';
+import SimpleMultiCarTest from './src/screens/SimpleMultiCarTest';
 // SIMPLIFIED: Using simple settings screen instead of complex one
 import SimpleSettingsScreen from './src/screens/SimpleSettingsScreen';
 
@@ -19,6 +20,7 @@ export type RootStackParamList = {
   Splash: undefined;
   Menu: undefined;
   Game: undefined;
+  TestCars: undefined;
   Settings: undefined;
 };
 
@@ -37,7 +39,8 @@ export default function App() {
       >
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Menu" component={MenuScreen} />
-        <Stack.Screen name="Game" component={SimpleGameScreen} />
+        <Stack.Screen name="Game" component={MultiCarGameScreen} />
+        <Stack.Screen name="TestCars" component={SimpleMultiCarTest} />
         <Stack.Screen name="Settings" component={SimpleSettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>

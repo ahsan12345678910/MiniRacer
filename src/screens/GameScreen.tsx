@@ -13,7 +13,7 @@ import { loadTrack } from '../game/world/TrackLoader';
 import { updateCar, SURFACE_TYPES } from '../game/physics/CarModel';
 import { resolve } from '../game/physics/Collision';
 import { controlsRef } from '../game/input/InputManager';
-import { useUIStore } from '../game/state/UIState';
+import { useSetSnapshot, useSetPaused, usePaused } from '../game/state/UIState';
 import { TouchZones, ButtonsPad, VirtualJoystick } from '../game/input/InputManager';
 import { HUD } from '../ui/HUD';
 
@@ -31,7 +31,9 @@ const GameScreen: React.FC = () => {
   const [inputMode, setInputMode] = useState<'touchZones' | 'joystick'>('touchZones');
 
   // UI store
-  const { setSnapshot, setPaused, paused } = useUIStore();
+  const setSnapshot = useSetSnapshot();
+  const setPaused = useSetPaused();
+  const paused = usePaused();
 
   // Load track on mount
   useEffect(() => {
