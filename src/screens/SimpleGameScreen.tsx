@@ -74,14 +74,14 @@ const SimpleGameScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Simple track background with scrolling */}
+      {/* Enhanced track background with scrolling */}
       <View style={styles.trackBackground}>
-        {/* Track tiles with offset */}
+        {/* Grass background tiles */}
         {Array.from({ length: 50 }, (_, i) => (
           <View
-            key={i}
+            key={`grass-${i}`}
             style={[
-              styles.trackTile,
+              styles.grassTile,
               {
                 left: (i % 10) * 80 + trackOffset.x,
                 top: Math.floor(i / 10) * 80 + trackOffset.y,
@@ -90,7 +90,33 @@ const SimpleGameScreen: React.FC = () => {
           />
         ))}
 
-        {/* Track boundary with offset */}
+        {/* Track surface tiles */}
+        {Array.from({ length: 30 }, (_, i) => (
+          <View
+            key={`track-${i}`}
+            style={[
+              styles.trackTile,
+              {
+                left: (i % 6) * 80 + 80 + trackOffset.x,
+                top: Math.floor(i / 6) * 80 + 80 + trackOffset.y,
+              },
+            ]}
+          />
+        ))}
+
+        {/* Track center line */}
+        <View 
+          style={[
+            styles.trackCenterLine,
+            {
+              left: screenWidth / 2 - 2 + trackOffset.x,
+              top: 50 + trackOffset.y,
+              bottom: 50 - trackOffset.y,
+            }
+          ]} 
+        />
+
+        {/* Track boundaries */}
         <View 
           style={[
             styles.trackBoundary,
@@ -103,7 +129,7 @@ const SimpleGameScreen: React.FC = () => {
           ]} 
         />
 
-        {/* Simple car - stays in center */}
+        {/* Enhanced car - stays in center */}
         <View
           style={[
             styles.car,
@@ -127,50 +153,41 @@ const SimpleGameScreen: React.FC = () => {
             <Text style={styles.scoreValue}>{score}</Text>
             <Text style={styles.scoreLabel}>SCORE</Text>
           </View>
-          {/* CONTROL BUTTONS */}
+          {/* ESSENTIAL CONTROL BUTTONS */}
           <TouchableOpacity
-            style={styles.testButton}
+            style={styles.arrowButton}
             onPress={() => {
               setTrackOffset(prev => ({ ...prev, x: prev.x + 20 })); // Move track right (car appears to go left)
             }}
           >
-            <Text style={styles.testButtonText}>LEFT</Text>
+            <Text style={styles.arrowButtonText}>←</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={styles.testButton}
+            style={styles.arrowButton}
             onPress={() => {
               setTrackOffset(prev => ({ ...prev, y: prev.y + 20 })); // Move track down (car appears to go up)
             }}
           >
-            <Text style={styles.testButtonText}>UP</Text>
+            <Text style={styles.arrowButtonText}>↑</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={styles.testButton}
+            style={styles.arrowButton}
             onPress={() => {
               setTrackOffset(prev => ({ ...prev, x: prev.x - 20 })); // Move track left (car appears to go right)
             }}
           >
-            <Text style={styles.testButtonText}>RIGHT</Text>
+            <Text style={styles.arrowButtonText}>→</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={styles.testButton}
+            style={styles.arrowButton}
             onPress={() => {
               setTrackOffset(prev => ({ ...prev, y: prev.y - 20 })); // Move track up (car appears to go down)
             }}
           >
-            <Text style={styles.testButtonText}>DOWN</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.testButton, styles.accelerateButton]}
-            onPress={() => {
-              setTrackOffset(prev => ({ ...prev, x: prev.x - 30 })); // Move track left faster (car appears to accelerate right)
-            }}
-          >
-            <Text style={styles.testButtonText}>ACCELERATE</Text>
+            <Text style={styles.arrowButtonText}>↓</Text>
           </TouchableOpacity>
         </View>
 
@@ -179,9 +196,6 @@ const SimpleGameScreen: React.FC = () => {
             <Text style={styles.controlButtonText}>
               {isPaused ? '▶' : '⏸'}
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.controlButton} onPress={handleBackToMenu}>
-            <Text style={styles.controlButtonText}>MENU</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -198,37 +212,64 @@ const styles = StyleSheet.create({
   },
   trackBackground: {
     flex: 1,
-    backgroundColor: '#2a4a2a',
+    backgroundColor: '#1a4a1a', // Darker grass background
     position: 'relative',
     overflow: 'hidden', // Hide overflow for cleaner scrolling
+  },
+  grassTile: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    backgroundColor: '#2a5a2a', // Medium grass color
+    borderWidth: 1,
+    borderColor: '#1a3a1a', // Darker grass border
   },
   trackTile: {
     position: 'absolute',
     width: 80,
     height: 80,
-    backgroundColor: '#4a6a4a',
+    backgroundColor: '#4a4a4a', // Dark asphalt color
     borderWidth: 1,
-    borderColor: '#3a5a3a',
+    borderColor: '#3a3a3a', // Darker asphalt border
+  },
+  trackCenterLine: {
+    position: 'absolute',
+    width: 4,
+    backgroundColor: '#FFFF00', // Yellow center line
+    borderWidth: 1,
+    borderColor: '#CCCC00',
   },
   trackBoundary: {
     position: 'absolute',
-    top: 50,
-    left: 50,
-    right: 50,
-    bottom: 50,
-    borderWidth: 4,
+    borderWidth: 6,
     borderColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 25,
     backgroundColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   car: {
     position: 'absolute',
-    width: 30,
-    height: 15,
-    backgroundColor: '#FF4444',
-    borderRadius: 3,
-    borderWidth: 2,
+    width: 35,
+    height: 18,
+    backgroundColor: '#FF3333',
+    borderRadius: 4,
+    borderWidth: 3,
     borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 4,
   },
   hud: {
     position: 'absolute',
@@ -298,8 +339,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-  accelerateButton: {
-    backgroundColor: '#00FF00', // Green color for accelerate
+  arrowButton: {
+    backgroundColor: '#FF4444',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 80,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  arrowButtonText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   simpleButton: {
     backgroundColor: '#FF0000',
