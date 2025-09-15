@@ -5,241 +5,292 @@ import {
   StyleSheet,
   ActivityIndicator,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { FixedStepLoop } from '../game/loop/FixedStepLoop';
-import { GameCore, makeInitialGame, resetCarAtStart } from '../game/state/GameState';
-import { loadTrack } from '../game/world/TrackLoader';
-import { updateCar, SURFACE_TYPES } from '../game/physics/CarModel';
-import { resolve } from '../game/physics/Collision';
-import { controlsRef } from '../game/input/InputManager';
-import { useSetSnapshot, useSetPaused, usePaused } from '../game/state/UIState';
-import { TouchZones, ButtonsPad, VirtualJoystick } from '../game/input/InputManager';
-import { HUD } from '../ui/HUD';
+import { getSimpleGameLoopManager } from '../game/loop/SimpleGameLoopManager';
+import { getSimpleRaceManager } from '../game/SimpleRaceManager';
+import { TouchZones, VirtualJoystick } from '../game/input/InputManager';
+import { createCamera, DEFAULT_CAMERA_SETTINGS } from '../game/camera/Camera';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const GameScreen: React.FC = () => {
   // Refs for game state
-  const gameRef = useRef<GameCore>(makeInitialGame());
-  const trackRef = useRef<any>(null);
-  const loopRef = useRef<FixedStepLoop | null>(null);
+  const raceManagerRef = useRef(getSimpleRaceManager());
+  const loopManagerRef = useRef(getSimpleGameLoopManager());
+  const cameraRef = useRef(createCamera(screenWidth, screenHeight, {
+    ...DEFAULT_CAMERA_SETTINGS,
+    followSpeed: 6.0, // Smooth following
+    defaultZoom: 0.8, // Slightly zoomed out to see more
+  }));
   const mountedRef = useRef(true);
 
   // React state
   const [ready, setReady] = useState(false);
   const [inputMode, setInputMode] = useState<'touchZones' | 'joystick'>('touchZones');
+  const [raceState, setRaceState] = useState<any>(null);
 
-  // UI store
-  const setSnapshot = useSetSnapshot();
-  const setPaused = useSetPaused();
-  const paused = usePaused();
-
-  // Load track on mount
+  // Initialize race on mount
   useEffect(() => {
     let mounted = true;
     
     (async () => {
       try {
-        const track = await loadTrack('default');
-        if (!mounted) return;
+        const raceManager = raceManagerRef.current;
+        const loopManager = loopManagerRef.current;
         
-        trackRef.current = track;
-        gameRef.current.track = track;
+        // Set up race manager with loop manager
+        loopManager.setGameIntegration(raceManager);
         
-        // Place car at start position
-        resetCarAtStart(gameRef.current);
-        
-        setReady(true);
+        if (mounted) {
+          setReady(true);
+        }
       } catch (error) {
-        console.error('Track load failed:', error);
+        console.error('Failed to initialize race:', error);
       }
     })();
 
     return () => {
       mounted = false;
-      mountedRef.current = false;
     };
   }, []);
 
-  // Game update function
-  const update = useCallback((dt: number) => {
-    const game = gameRef.current;
-    if (!game.track) return;
+  // Update race state and camera
+  useEffect(() => {
+    if (!ready) return;
 
-    // Read controls from ref
-    const controls = controlsRef.current;
-    
-    // Get surface at car position
-    const surface = game.track.surfaces.find(s => {
-      const [x, y, w, h] = s.rect;
-      return game.car.x >= x && game.car.x <= x + w && 
-             game.car.y >= y && game.car.y <= y + h;
-    });
-    
-    const surfaceType = surface?.type === 'asphalt' ? SURFACE_TYPES.ASPHALT : SURFACE_TYPES.GRASS;
-    
-    // Update car physics
-    updateCar(game.car, controls, surfaceType, game.track.walls, dt);
-    
-    // Update lap system (simplified)
-    const startLine = game.track.startLine;
-    const carX = game.car.x;
-    const carY = game.car.y;
-    
-    // Check if car crossed start line
-    if (carX >= startLine.x1 && carX <= startLine.x2 && 
-        carY >= Math.min(startLine.y1, startLine.y2) && carY <= Math.max(startLine.y1, startLine.y2)) {
-      const crossSide = carX > (startLine.x1 + startLine.x2) / 2 ? 1 : -1;
+    const updateRaceState = () => {
+      const raceManager = raceManagerRef.current;
+      const currentState = raceManager.getState();
       
-      if (game.lap.lastCrossSide !== 0 && game.lap.lastCrossSide !== crossSide) {
-        // Lap completed
-        game.lap.current += 1;
-        if (game.lap.bestMs === 0 || game.lap.bestMs > 0) {
-          game.lap.bestMs = Math.max(game.lap.bestMs, 0); // Placeholder
-        }
+      // Update camera to follow player car
+      if (currentState.playerPosition) {
+        cameraRef.current.setTarget(currentState.playerPosition.x, currentState.playerPosition.y);
+        cameraRef.current.update(16); // ~60fps
       }
       
-      game.lap.lastCrossSide = crossSide;
-    }
-    
-    // Compute speed in km/h
-    const speedKmh = Math.sqrt(game.car.vx * game.car.vx + game.car.vy * game.car.vy) * 3.6;
-    
-    // Format lap time (simplified)
-    const lapTime = formatTime(0); // Placeholder
-    
-    // Publish UI snapshot (throttled)
-    setSnapshot({
-      speedKmh,
-      lap: lapTime,
-      bestMs: game.lap.bestMs,
-    });
-  }, [setSnapshot]);
+      setRaceState(currentState);
+    };
 
-  // Focus effect to start/stop loop
+    const interval = setInterval(updateRaceState, 16); // Update every 16ms (~60fps)
+    return () => clearInterval(interval);
+  }, [ready]);
+
+  // Handle focus/blur
   useFocusEffect(
     useCallback(() => {
-      if (!loopRef.current) {
-        loopRef.current = new FixedStepLoop(update);
-      }
+      mountedRef.current = true;
       
-      if (ready && !loopRef.current.isRunning()) {
-        loopRef.current.start();
+      if (ready) {
+        const loopManager = loopManagerRef.current;
+        loopManager.start();
       }
-      
+
       return () => {
-        loopRef.current?.stop();
+        mountedRef.current = false;
+        const loopManager = loopManagerRef.current;
+        loopManager.pause();
       };
-    }, [ready, update])
+    }, [ready])
   );
 
-  // Format time helper
-  const formatTime = (timeMs: number): string => {
-    const totalSeconds = Math.floor(timeMs / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    const milliseconds = Math.floor((timeMs % 1000) / 10);
-
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
-  };
-
-  // Handle pause
-  const handlePause = useCallback(() => {
-    const newPaused = !paused;
-    setPaused(newPaused);
-    
-    if (newPaused) {
-      loopRef.current?.stop();
-    } else if (ready) {
-      loopRef.current?.start();
-    }
-  }, [paused, setPaused, ready]);
-
-  // Handle back to menu
-  const handleBackToMenu = useCallback(() => {
-    loopRef.current?.stop();
-    // Navigation would go here
+  // Handle input mode change
+  const handleInputModeChange = useCallback((mode: 'touchZones' | 'joystick') => {
+    setInputMode(mode);
   }, []);
 
-  // Render loading state
+  // Race control functions
+  const startRace = () => {
+    const raceManager = raceManagerRef.current;
+    raceManager.startRace();
+  };
+
+  const stopRace = () => {
+    const raceManager = raceManagerRef.current;
+    raceManager.stopRace();
+  };
+
+  const resetRace = () => {
+    const raceManager = raceManagerRef.current;
+    raceManager.resetRace();
+  };
+
+  // Helper function to convert world coordinates to screen coordinates
+  const worldToScreen = (worldX: number, worldY: number) => {
+    return cameraRef.current.worldToScreen(worldX, worldY);
+  };
+
   if (!ready) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
-        <Text style={styles.loadingText}>Loading track...</Text>
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading Game...</Text>
       </View>
     );
   }
 
-  // Render game
   return (
     <View style={styles.container}>
-      {/* Track Background */}
-      <View style={styles.trackBackground} pointerEvents="none">
-        {/* Tiled track pattern */}
-        {Array.from({ length: 20 }, (_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.trackTile,
-              {
-                left: (i % 5) * 80,
-                top: Math.floor(i / 5) * 80,
-              },
-            ]}
-          />
-        ))}
+      {/* Game View */}
+      <View style={styles.gameView}>
+        {/* Track Background */}
+        <View style={styles.trackBackground}>
+          {/* Large grass background that extends beyond screen */}
+          <View style={styles.grassBackground} />
+          
+          {/* Track tiles - generate more tiles for scrolling */}
+          {Array.from({ length: 100 }, (_, i) => {
+            const tileX = (i % 10) * 80;
+            const tileY = Math.floor(i / 10) * 80;
+            const screenPos = worldToScreen(tileX, tileY);
+            
+            // Only render tiles that are visible on screen
+            if (screenPos.x > -100 && screenPos.x < screenWidth + 100 && 
+                screenPos.y > -100 && screenPos.y < screenHeight + 100) {
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.trackTile,
+                    {
+                      left: screenPos.x - 40,
+                      top: screenPos.y - 40,
+                    },
+                  ]}
+                />
+              );
+            }
+            return null;
+          })}
 
-        {/* Track boundaries */}
-        <View style={styles.trackBoundary} />
+          {/* Track boundaries - positioned relative to camera */}
+          <View style={[styles.trackBoundary, {
+            left: worldToScreen(50, 50).x - 200,
+            top: worldToScreen(50, 50).y - 200,
+            width: 400,
+            height: 400,
+          }]} />
 
-        {/* Car with Shadow */}
-        <View
-          style={[
-            styles.carShadow,
-            {
-              left: gameRef.current.car.x - 20,
-              top: gameRef.current.car.y - 10 + 2,
-              transform: [{ rotate: `${gameRef.current.car.angle * 180 / Math.PI}deg` }],
-            },
-          ]}
-        />
-        <View
-          style={[
-            styles.carBody,
-            {
-              left: gameRef.current.car.x - 20,
-              top: gameRef.current.car.y - 10,
-              transform: [{ rotate: `${gameRef.current.car.angle * 180 / Math.PI}deg` }],
-            },
-          ]}
-        >
-          {/* Car Windows */}
-          <View style={styles.carWindows} />
-          
-          {/* Car Headlights */}
-          <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
-          <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
-          
-          {/* Car Wheels */}
-          <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
-          <View style={[styles.carWheel, styles.carWheelFrontRight]} />
-          <View style={[styles.carWheel, styles.carWheelRearLeft]} />
-          <View style={[styles.carWheel, styles.carWheelRearRight]} />
-          
-          {/* Car Spoiler */}
-          <View style={styles.carSpoiler} />
+          {/* Player Car */}
+          {raceState && raceState.playerPosition && (
+            <View
+              style={[
+                styles.carBody,
+                styles.playerCar,
+                {
+                  left: worldToScreen(raceState.playerPosition.x, raceState.playerPosition.y).x - 20,
+                  top: worldToScreen(raceState.playerPosition.x, raceState.playerPosition.y).y - 10,
+                  transform: [{ rotate: `${(raceState.playerCar?.getState?.()?.angle || 0) * 180 / Math.PI}deg` }],
+                },
+              ]}
+            >
+              <View style={styles.carWindows} />
+              <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
+              <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
+              <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
+              <View style={[styles.carWheel, styles.carWheelFrontRight]} />
+              <View style={[styles.carWheel, styles.carWheelRearLeft]} />
+              <View style={[styles.carWheel, styles.carWheelRearRight]} />
+              <View style={styles.carSpoiler} />
+            </View>
+          )}
+
+          {/* AI Cars */}
+          {raceState?.aiPositions?.map((pos: any, index: number) => {
+            const aiCar = raceState.aiCars?.[index];
+            const carColors = ['#4444FF', '#44FF44', '#FFFF44']; // Blue, Green, Yellow
+            const carColor = carColors[index] || '#FF44FF';
+            const screenPos = worldToScreen(pos.x, pos.y);
+            
+            return (
+              <View
+                key={index}
+                style={[
+                  styles.carBody,
+                  {
+                    backgroundColor: carColor,
+                    borderColor: carColor,
+                    left: screenPos.x - 20,
+                    top: screenPos.y - 10,
+                    transform: [{ rotate: `${(aiCar?.getState?.()?.angle || 0) * 180 / Math.PI}deg` }],
+                  },
+                ]}
+              >
+                <View style={styles.carWindows} />
+                <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
+                <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
+                <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
+                <View style={[styles.carWheel, styles.carWheelFrontRight]} />
+                <View style={[styles.carWheel, styles.carWheelRearLeft]} />
+                <View style={[styles.carWheel, styles.carWheelRearRight]} />
+                <View style={styles.carSpoiler} />
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Game HUD Overlay */}
+        <View style={styles.gameHUD}>
+          <View style={styles.hudHeader}>
+            <Text style={styles.hudTitle}>Single Player Game</Text>
+            <Text style={styles.hudSubtitle}>
+              Race: {raceState?.raceStarted ? 'ON' : 'OFF'} | Time: {raceState?.raceTime?.toFixed(1) || '0.0'}s
+            </Text>
+          </View>
+
+          {/* Race Controls */}
+          <View style={styles.hudControls}>
+            {!raceState?.raceStarted ? (
+              <TouchableOpacity style={styles.startButton} onPress={startRace}>
+                <Text style={styles.buttonText}>🏁 Start Race</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.stopButton} onPress={stopRace}>
+                <Text style={styles.buttonText}>🛑 Stop Race</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.resetButton} onPress={resetRace}>
+              <Text style={styles.buttonText}>🔄 Reset</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
-      {/* HUD Overlay */}
-      <HUD onPause={handlePause} onMenu={handleBackToMenu} />
-
       {/* Input Controls */}
-      {inputMode === 'touchZones' && <TouchZones />}
-      {inputMode === 'joystick' && <VirtualJoystick />}
-      <ButtonsPad />
+      <View style={styles.inputContainer}>
+        <Text style={styles.sectionTitle}>Input Controls:</Text>
+        {inputMode === 'touchZones' ? (
+          <TouchZones
+            onInputModeChange={handleInputModeChange}
+            brakeButtonSize={80}
+            brakeButtonMargin={20}
+          />
+        ) : (
+          <VirtualJoystick
+            onInputModeChange={handleInputModeChange}
+            size={120}
+            deadZone={10}
+            maxDistance={60}
+            position="left"
+          />
+        )}
+      </View>
+
+      {/* Debug Info */}
+      <View style={styles.debugContainer}>
+        <Text style={styles.sectionTitle}>Debug Info:</Text>
+        <Text style={styles.debugText}>
+          Player: ({raceState?.playerPosition?.x?.toFixed(1) || '0'}, {raceState?.playerPosition?.y?.toFixed(1) || '0'}) 
+          Speed: {raceState?.playerCar?.getState?.()?.speed?.toFixed(1) || '0.0'} m/s
+        </Text>
+        {raceState?.aiPositions?.map((pos: any, index: number) => (
+          <Text key={index} style={styles.debugText}>
+            AI {index + 1}: ({pos.x?.toFixed(1) || '0'}, {pos.y?.toFixed(1) || '0'}) 
+            Speed: {raceState.aiCars?.[index]?.getState?.()?.speed?.toFixed(1) || '0.0'} m/s
+          </Text>
+        ))}
+      </View>
     </View>
   );
 };
@@ -247,23 +298,25 @@ const GameScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#2C3E50',
   },
-  loadingContainer: {
+  gameView: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-  },
-  loadingText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    marginTop: 20,
+    position: 'relative',
   },
   trackBackground: {
     flex: 1,
     backgroundColor: '#2a4a2a', // Grass color
     position: 'relative',
+    overflow: 'hidden',
+  },
+  grassBackground: {
+    position: 'absolute',
+    top: -2000,
+    left: -2000,
+    width: 4000,
+    height: 4000,
+    backgroundColor: '#2a4a2a',
   },
   trackTile: {
     position: 'absolute',
@@ -284,16 +337,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'transparent',
   },
-  // Car Shadow
-  carShadow: {
-    position: 'absolute',
-    width: 40,
-    height: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 8,
-    transform: [{ skewX: '15deg' }],
-  },
-  // Car Body
+  // Car Styles
   carBody: {
     position: 'absolute',
     width: 40,
@@ -311,7 +355,10 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 5,
   },
-  // Car Windows
+  playerCar: {
+    backgroundColor: '#FF4444',
+    borderColor: '#CC3333',
+  },
   carWindows: {
     position: 'absolute',
     top: 2,
@@ -323,7 +370,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(100, 149, 237, 0.6)',
   },
-  // Car Headlights
   carHeadlight: {
     position: 'absolute',
     width: 4,
@@ -341,7 +387,6 @@ const styles = StyleSheet.create({
     top: 2,
     right: 2,
   },
-  // Car Wheels
   carWheel: {
     position: 'absolute',
     width: 6,
@@ -367,7 +412,6 @@ const styles = StyleSheet.create({
     bottom: 1,
     right: 1,
   },
-  // Car Spoiler
   carSpoiler: {
     position: 'absolute',
     top: -2,
@@ -378,6 +422,93 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     borderWidth: 1,
     borderColor: '#444444',
+  },
+  // HUD Styles
+  gameHUD: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 10,
+    padding: 15,
+    zIndex: 100,
+  },
+  hudHeader: {
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  hudTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 5,
+  },
+  hudSubtitle: {
+    fontSize: 12,
+    color: '#BDC3C7',
+  },
+  hudControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  startButton: {
+    backgroundColor: '#27AE60',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  stopButton: {
+    backgroundColor: '#E74C3C',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  resetButton: {
+    backgroundColor: '#F39C12',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  buttonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  // Bottom UI
+  inputContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    padding: 15,
+    borderRadius: 10,
+    margin: 10,
+    minHeight: 100,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 10,
+  },
+  debugContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    padding: 15,
+    borderRadius: 10,
+    margin: 10,
+  },
+  debugText: {
+    color: '#BDC3C7',
+    fontSize: 12,
+    marginBottom: 3,
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 18,
+    marginTop: 20,
+    textAlign: 'center',
   },
 });
 

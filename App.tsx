@@ -12,6 +12,8 @@ import MenuScreen from './src/screens/MenuScreen';
 // Using MultiCarGameScreen for racing with AI cars
 import MultiCarGameScreen from './src/screens/MultiCarGameScreen';
 import SimpleMultiCarTest from './src/screens/SimpleMultiCarTest';
+import SimpleRaceScreen from './src/screens/SimpleRaceScreen';
+import SimpleCarTestScreen from './src/screens/SimpleCarTestScreen';
 // SIMPLIFIED: Using simple settings screen instead of complex one
 import SimpleSettingsScreen from './src/screens/SimpleSettingsScreen';
 
@@ -21,6 +23,8 @@ export type RootStackParamList = {
   Menu: undefined;
   Game: undefined;
   TestCars: undefined;
+  SimpleRace: undefined;
+  SimpleCarTest: undefined;
   Settings: undefined;
 };
 
@@ -41,6 +45,8 @@ export default function App() {
         <Stack.Screen name="Menu" component={MenuScreen} />
         <Stack.Screen name="Game" component={MultiCarGameScreen} />
         <Stack.Screen name="TestCars" component={SimpleMultiCarTest} />
+        <Stack.Screen name="SimpleRace" component={SimpleRaceScreen} />
+        <Stack.Screen name="SimpleCarTest" component={SimpleCarTestScreen} />
         <Stack.Screen name="Settings" component={SimpleSettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>

@@ -8,305 +8,289 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { FixedStepLoop } from '../game/loop/FixedStepLoop';
-import { loadTrack } from '../game/world/TrackLoader';
-import { SURFACE_TYPES } from '../game/physics/CarModel';
-import { controlsRef } from '../game/input/InputManager';
-import { useSetSnapshot, useSetPaused, usePaused } from '../game/state/UIState';
-import { TouchZones, ButtonsPad, VirtualJoystick } from '../game/input/InputManager';
-import { HUD } from '../ui/HUD';
-import { RaceHUD } from '../ui/RaceHUD';
-import { CameraView, TrackTile, Car } from '../ui/Camera';
-import { createCamera } from '../game/camera/Camera';
-import { MultiCarManager } from '../game/cars/MultiCarManager';
-import { CAR_TYPES } from '../game/cars/CarTypes';
+import { getSimpleGameLoopManager } from '../game/loop/SimpleGameLoopManager';
+import { getSimpleRaceManager } from '../game/SimpleRaceManager';
+import { TouchZones, VirtualJoystick } from '../game/input/InputManager';
+import { createCamera, DEFAULT_CAMERA_SETTINGS } from '../game/camera/Camera';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const MultiCarGameScreen: React.FC = () => {
   // Refs for game state
-  const trackRef = useRef<any>(null);
-  const loopRef = useRef<FixedStepLoop | null>(null);
+  const raceManagerRef = useRef(getSimpleRaceManager());
+  const loopManagerRef = useRef(getSimpleGameLoopManager());
+  const cameraRef = useRef(createCamera(screenWidth, screenHeight, {
+    ...DEFAULT_CAMERA_SETTINGS,
+    followSpeed: 6.0, // Smooth following
+    defaultZoom: 0.8, // Slightly zoomed out to see more
+  }));
   const mountedRef = useRef(true);
-  const cameraRef = useRef(createCamera(screenWidth, screenHeight));
-  const multiCarManagerRef = useRef(new MultiCarManager());
 
   // React state
   const [ready, setReady] = useState(false);
   const [inputMode, setInputMode] = useState<'touchZones' | 'joystick'>('touchZones');
-  const [cameraControlsVisible, setCameraControlsVisible] = useState(false);
-  const [raceStarted, setRaceStarted] = useState(false);
+  const [raceState, setRaceState] = useState<any>(null);
 
-  // UI store
-  const setSnapshot = useSetSnapshot();
-  const setPaused = useSetPaused();
-  const paused = usePaused();
-
-  // Load track and initialize race on mount
+  // Initialize race on mount
   useEffect(() => {
     let mounted = true;
     
-    console.log('🚀 MultiCarGameScreen: Initializing...');
-    
     (async () => {
       try {
-        console.log('📁 Loading track...');
-        const track = await loadTrack('default');
-        if (!mounted) return;
+        const raceManager = raceManagerRef.current;
+        const loopManager = loopManagerRef.current;
         
-        trackRef.current = track;
-        console.log('✅ Track loaded successfully');
+        // Set up race manager with loop manager
+        loopManager.setGameIntegration(raceManager);
         
-        // Initialize multi-car race
-        const startPositions = [
-          { x: 200, y: 300, angle: 0 }, // Player
-          { x: 250, y: 300, angle: 0 }, // AI 1
-          { x: 200, y: 350, angle: 0 }, // AI 2
-          { x: 250, y: 350, angle: 0 }, // AI 3
-        ];
-        
-        multiCarManagerRef.current.setStartPositions(startPositions);
-        multiCarManagerRef.current.initializeRace(200, 300, 0, 3);
-        
-        // Set racing path (simple oval track)
-        const racingPath = [
-          { x: 200, y: 300 },
-          { x: 400, y: 300 },
-          { x: 400, y: 500 },
-          { x: 200, y: 500 },
-          { x: 200, y: 300 },
-        ];
-        multiCarManagerRef.current.setRacingPath(racingPath);
-        
-        // Set camera to follow player car
-        const playerCar = multiCarManagerRef.current.getPlayerCar();
-        console.log('🚗 Player car position:', playerCar.x, playerCar.y);
-        cameraRef.current.setTarget(playerCar.x, playerCar.y);
-        cameraRef.current.setPosition(playerCar.x, playerCar.y);
-        
-        // Debug camera state
-        const cameraState = cameraRef.current.getState();
-        console.log('📷 Camera state:', cameraState);
-        
-        // Debug: Log AI car positions
-        const aiCars = multiCarManagerRef.current.getAICars();
-        aiCars.forEach((aiCar, index) => {
-          const carState = aiCar.getCarState();
-          console.log(`🤖 AI Car ${index + 1} position:`, carState.x, carState.y);
-        });
-        
-        console.log('🎮 MultiCarGameScreen: Ready!');
-        setReady(true);
+        if (mounted) {
+          setReady(true);
+        }
       } catch (error) {
-        console.error('❌ Track load failed:', error);
+        console.error('Failed to initialize race:', error);
       }
     })();
 
     return () => {
       mounted = false;
-      mountedRef.current = false;
     };
   }, []);
 
-  // Game update function
-  const update = useCallback((dt: number) => {
-    if (!trackRef.current) return;
+  // Update race state and camera
+  useEffect(() => {
+    if (!ready) return;
 
-    // Read controls from ref
-    const controls = controlsRef.current;
-    
-    // Get surface properties (simplified)
-    const surfaceType = SURFACE_TYPES.ASPHALT;
-    
-    // Update multi-car manager
-    multiCarManagerRef.current.update(dt, controls, surfaceType);
-    
-    // Update camera to follow player car
-    const playerCar = multiCarManagerRef.current.getPlayerCar();
-    cameraRef.current.setTarget(playerCar.x, playerCar.y);
-    cameraRef.current.update(dt);
-    
-    // Debug: Log car positions every second
-    const multiCarState = multiCarManagerRef.current.getState();
-    if (Math.floor(multiCarState.raceTime / 1000) !== Math.floor((multiCarState.raceTime - dt) / 1000)) {
-      console.log('🚗 Player car position:', playerCar.x, playerCar.y);
-      const aiCars = multiCarManagerRef.current.getAICars();
-      aiCars.forEach((aiCar, index) => {
-        const carState = aiCar.getCarState();
-        console.log(`🤖 AI Car ${index + 1} position:`, carState.x, carState.y);
-      });
-    }
-    
-    
-    // Compute speed in km/h
-    const speedKmh = Math.sqrt(playerCar.vx * playerCar.vx + playerCar.vy * playerCar.vy) * 3.6;
-    
-    // Publish UI snapshot
-    setSnapshot({
-      speedKmh,
-      lap: '00:00.00',
-      bestMs: 0,
-    });
-  }, [setSnapshot]);
+    const updateRaceState = () => {
+      const raceManager = raceManagerRef.current;
+      const currentState = raceManager.getState();
+      
+      // Update camera to follow player car
+      if (currentState.playerPosition) {
+        cameraRef.current.setTarget(currentState.playerPosition.x, currentState.playerPosition.y);
+        cameraRef.current.update(16); // ~60fps
+      }
+      
+      setRaceState(currentState);
+    };
 
-  // Focus effect to start/stop loop
+    const interval = setInterval(updateRaceState, 16); // Update every 16ms (~60fps)
+    return () => clearInterval(interval);
+  }, [ready]);
+
+  // Handle focus/blur
   useFocusEffect(
     useCallback(() => {
-      if (!loopRef.current) {
-        loopRef.current = new FixedStepLoop(update);
-      }
+      mountedRef.current = true;
       
-      if (ready && !loopRef.current.isRunning()) {
-        loopRef.current.start();
+      if (ready) {
+        const loopManager = loopManagerRef.current;
+        loopManager.start();
       }
-      
+
       return () => {
-        loopRef.current?.stop();
+        mountedRef.current = false;
+        const loopManager = loopManagerRef.current;
+        loopManager.pause();
       };
-    }, [ready, update])
+    }, [ready])
   );
 
-  // Handle pause
-  const handlePause = useCallback(() => {
-    const newPaused = !paused;
-    setPaused(newPaused);
-    
-    if (newPaused) {
-      loopRef.current?.stop();
-    } else if (ready) {
-      loopRef.current?.start();
-    }
-  }, [paused, setPaused, ready]);
-
-  // Handle back to menu
-  const handleBackToMenu = useCallback(() => {
-    loopRef.current?.stop();
-    // Navigation would go here
+  // Handle input mode change
+  const handleInputModeChange = useCallback((mode: 'touchZones' | 'joystick') => {
+    setInputMode(mode);
   }, []);
 
-  // Handle start race
-  const handleStartRace = useCallback(() => {
-    console.log('🏁 Starting race!');
-    multiCarManagerRef.current.startRace();
-    setRaceStarted(true);
-  }, []);
+  // Race control functions
+  const startRace = () => {
+    const raceManager = raceManagerRef.current;
+    raceManager.startRace();
+  };
 
-  // Handle reset race
-  const handleResetRace = useCallback(() => {
-    console.log('🔄 Resetting race!');
-    multiCarManagerRef.current.resetRace();
-    setRaceStarted(false);
-  }, []);
+  const stopRace = () => {
+    const raceManager = raceManagerRef.current;
+    raceManager.stopRace();
+  };
 
-  // Render loading state
+  const resetRace = () => {
+    const raceManager = raceManagerRef.current;
+    raceManager.resetRace();
+  };
+
+  // Helper function to convert world coordinates to screen coordinates
+  const worldToScreen = (worldX: number, worldY: number) => {
+    return cameraRef.current.worldToScreen(worldX, worldY);
+  };
+
   if (!ready) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
-        <Text style={styles.loadingText}>Loading race...</Text>
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading Race Game...</Text>
       </View>
     );
   }
 
-  const multiCarState = multiCarManagerRef.current.getState();
-
-  // Render game with multiple cars
   return (
     <View style={styles.container}>
-      {/* Camera View - applies camera transformations */}
-      <CameraView camera={cameraRef.current} style={styles.cameraView}>
-        {/* Grass background */}
-        <View style={styles.grassBackground} />
-        
-        {/* Track tiles */}
-        {Array.from({ length: 20 }, (_, i) => (
-          <TrackTile
-            key={i}
-            camera={cameraRef.current}
-            worldX={(i % 5) * 80}
-            worldY={Math.floor(i / 5) * 80}
-            width={80}
-            height={80}
-            color="#4a6a4a"
-            borderColor="#3a5a3a"
-          />
-        ))}
-
-        {/* Track boundaries */}
-        <View style={styles.trackBoundary} />
-
-        {/* Player Car */}
-        <Car
-          camera={cameraRef.current}
-          worldX={multiCarState.playerCar.x}
-          worldY={multiCarState.playerCar.y}
-          angle={multiCarState.playerCar.angle}
-          {...CAR_TYPES.player}
-        />
-
-        {/* AI Cars */}
-        {multiCarState.aiCars.map((aiCarState) => {
-          const carState = aiCarState.car;
-          const config = aiCarState.config;
+      {/* Game View */}
+      <View style={styles.gameView}>
+        {/* Track Background */}
+        <View style={styles.trackBackground}>
+          {/* Large grass background that extends beyond screen */}
+          <View style={styles.grassBackground} />
           
-          return (
-            <Car
-              key={config.id}
-              camera={cameraRef.current}
-              worldX={carState.x}
-              worldY={carState.y}
-              angle={carState.angle}
-              color={config.color}
-              borderColor={config.borderColor}
-              windowColor={config.windowColor}
-              headlightColor={config.headlightColor}
-              wheelColor={config.wheelColor}
-              spoilerColor={config.spoilerColor}
-            />
-          );
-        })}
-      </CameraView>
+          {/* Track tiles - generate more tiles for scrolling */}
+          {Array.from({ length: 100 }, (_, i) => {
+            const tileX = (i % 10) * 80;
+            const tileY = Math.floor(i / 10) * 80;
+            const screenPos = worldToScreen(tileX, tileY);
+            
+            // Only render tiles that are visible on screen
+            if (screenPos.x > -100 && screenPos.x < screenWidth + 100 && 
+                screenPos.y > -100 && screenPos.y < screenHeight + 100) {
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.trackTile,
+                    {
+                      left: screenPos.x - 40,
+                      top: screenPos.y - 40,
+                    },
+                  ]}
+                />
+              );
+            }
+            return null;
+          })}
 
-      {/* HUD Overlay - not affected by camera */}
-      <HUD onPause={handlePause} onMenu={handleBackToMenu} />
+          {/* Track boundaries - positioned relative to camera */}
+          <View style={[styles.trackBoundary, {
+            left: worldToScreen(50, 50).x - 200,
+            top: worldToScreen(50, 50).y - 200,
+            width: 400,
+            height: 400,
+          }]} />
 
-      {/* Race Controls */}
-      <View style={styles.raceControls}>
-        {!raceStarted ? (
-          <TouchableOpacity
-            style={styles.startButton}
-            onPress={handleStartRace}
-          >
-            <Text style={styles.buttonText}>Start Race</Text>
-          </TouchableOpacity>
+          {/* Player Car */}
+          {raceState && raceState.playerPosition && (
+            <View
+              style={[
+                styles.carBody,
+                styles.playerCar,
+                {
+                  left: worldToScreen(raceState.playerPosition.x, raceState.playerPosition.y).x - 20,
+                  top: worldToScreen(raceState.playerPosition.x, raceState.playerPosition.y).y - 10,
+                  transform: [{ rotate: `${(raceState.playerCar?.getState?.()?.angle || 0) * 180 / Math.PI}deg` }],
+                },
+              ]}
+            >
+              <View style={styles.carWindows} />
+              <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
+              <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
+              <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
+              <View style={[styles.carWheel, styles.carWheelFrontRight]} />
+              <View style={[styles.carWheel, styles.carWheelRearLeft]} />
+              <View style={[styles.carWheel, styles.carWheelRearRight]} />
+              <View style={styles.carSpoiler} />
+            </View>
+          )}
+
+          {/* AI Cars */}
+          {raceState?.aiPositions?.map((pos: any, index: number) => {
+            const aiCar = raceState.aiCars?.[index];
+            const carColors = ['#4444FF', '#44FF44', '#FFFF44']; // Blue, Green, Yellow
+            const carColor = carColors[index] || '#FF44FF';
+            const screenPos = worldToScreen(pos.x, pos.y);
+            
+            return (
+              <View
+                key={index}
+                style={[
+                  styles.carBody,
+                  {
+                    backgroundColor: carColor,
+                    borderColor: carColor,
+                    left: screenPos.x - 20,
+                    top: screenPos.y - 10,
+                    transform: [{ rotate: `${(aiCar?.getState?.()?.angle || 0) * 180 / Math.PI}deg` }],
+                  },
+                ]}
+              >
+                <View style={styles.carWindows} />
+                <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
+                <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
+                <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
+                <View style={[styles.carWheel, styles.carWheelFrontRight]} />
+                <View style={[styles.carWheel, styles.carWheelRearLeft]} />
+                <View style={[styles.carWheel, styles.carWheelRearRight]} />
+                <View style={styles.carSpoiler} />
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Game HUD Overlay */}
+        <View style={styles.gameHUD}>
+          <View style={styles.hudHeader}>
+            <Text style={styles.hudTitle}>Race Game</Text>
+            <Text style={styles.hudSubtitle}>
+              Race: {raceState?.raceStarted ? 'ON' : 'OFF'} | Time: {raceState?.raceTime?.toFixed(1) || '0.0'}s
+            </Text>
+          </View>
+
+          {/* Race Controls */}
+          <View style={styles.hudControls}>
+            {!raceState?.raceStarted ? (
+              <TouchableOpacity style={styles.startButton} onPress={startRace}>
+                <Text style={styles.buttonText}>🏁 Start Race</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.stopButton} onPress={stopRace}>
+                <Text style={styles.buttonText}>🛑 Stop Race</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.resetButton} onPress={resetRace}>
+              <Text style={styles.buttonText}>🔄 Reset</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Input Controls */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.sectionTitle}>Input Controls:</Text>
+        {inputMode === 'touchZones' ? (
+          <TouchZones
+            onInputModeChange={handleInputModeChange}
+            brakeButtonSize={80}
+            brakeButtonMargin={20}
+          />
         ) : (
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={handleResetRace}
-          >
-            <Text style={styles.buttonText}>Reset Race</Text>
-          </TouchableOpacity>
+          <VirtualJoystick
+            onInputModeChange={handleInputModeChange}
+            size={120}
+            deadZone={10}
+            maxDistance={60}
+            position="left"
+          />
         )}
       </View>
 
-      {/* Race HUD */}
-      <RaceHUD
-        positions={multiCarManagerRef.current.getRacePositions()}
-        carConfigs={Object.fromEntries(
-          multiCarManagerRef.current.getRacePositions().map(pos => [
-            pos.carId, 
-            multiCarManagerRef.current.getCarConfig(pos.carId) || CAR_TYPES.player
-          ])
-        )}
-        raceTime={multiCarState.raceTime}
-        currentLap={1}
-        totalLaps={3}
-      />
-
-      {/* Input Controls - not affected by camera */}
-      {inputMode === 'touchZones' && <TouchZones />}
-      {inputMode === 'joystick' && <VirtualJoystick />}
-      <ButtonsPad />
+      {/* Debug Info */}
+      <View style={styles.debugContainer}>
+        <Text style={styles.sectionTitle}>Debug Info:</Text>
+        <Text style={styles.debugText}>
+          Player: ({raceState?.playerPosition?.x?.toFixed(1) || '0'}, {raceState?.playerPosition?.y?.toFixed(1) || '0'}) 
+          Speed: {raceState?.playerCar?.getState?.()?.speed?.toFixed(1) || '0.0'} m/s
+        </Text>
+        {raceState?.aiPositions?.map((pos: any, index: number) => (
+          <Text key={index} style={styles.debugText}>
+            AI {index + 1}: ({pos.x?.toFixed(1) || '0'}, {pos.y?.toFixed(1) || '0'}) 
+            Speed: {raceState.aiCars?.[index]?.getState?.()?.speed?.toFixed(1) || '0.0'} m/s
+          </Text>
+        ))}
+      </View>
     </View>
   );
 };
@@ -314,22 +298,17 @@ const MultiCarGameScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#2C3E50',
   },
-  loadingContainer: {
+  gameView: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    position: 'relative',
   },
-  loadingText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    marginTop: 20,
-  },
-  cameraView: {
+  trackBackground: {
     flex: 1,
     backgroundColor: '#2a4a2a', // Grass color
+    position: 'relative',
+    overflow: 'hidden',
   },
   grassBackground: {
     position: 'absolute',
@@ -338,6 +317,14 @@ const styles = StyleSheet.create({
     width: 4000,
     height: 4000,
     backgroundColor: '#2a4a2a',
+  },
+  trackTile: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    backgroundColor: '#4a6a4a',
+    borderWidth: 1,
+    borderColor: '#3a5a3a',
   },
   trackBoundary: {
     position: 'absolute',
@@ -350,28 +337,178 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'transparent',
   },
-  raceControls: {
+  // Car Styles
+  carBody: {
     position: 'absolute',
-    top: 100,
+    width: 40,
+    height: 20,
+    backgroundColor: '#FF4444',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#CC3333',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  playerCar: {
+    backgroundColor: '#FF4444',
+    borderColor: '#CC3333',
+  },
+  carWindows: {
+    position: 'absolute',
+    top: 2,
+    left: 4,
+    right: 4,
+    height: 8,
+    backgroundColor: 'rgba(135, 206, 250, 0.8)',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 149, 237, 0.6)',
+  },
+  carHeadlight: {
+    position: 'absolute',
+    width: 4,
+    height: 3,
+    backgroundColor: '#FFFF99',
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  carHeadlightLeft: {
+    top: 2,
+    left: 2,
+  },
+  carHeadlightRight: {
+    top: 2,
+    right: 2,
+  },
+  carWheel: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    backgroundColor: '#333333',
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: '#666666',
+  },
+  carWheelFrontLeft: {
+    top: 1,
+    left: 1,
+  },
+  carWheelFrontRight: {
+    top: 1,
+    right: 1,
+  },
+  carWheelRearLeft: {
+    bottom: 1,
+    left: 1,
+  },
+  carWheelRearRight: {
+    bottom: 1,
+    right: 1,
+  },
+  carSpoiler: {
+    position: 'absolute',
+    top: -2,
+    left: 8,
+    right: 8,
+    height: 2,
+    backgroundColor: '#222222',
+    borderRadius: 1,
+    borderWidth: 1,
+    borderColor: '#444444',
+  },
+  // HUD Styles
+  gameHUD: {
+    position: 'absolute',
+    top: 20,
     left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 10,
+    padding: 15,
     zIndex: 100,
   },
+  hudHeader: {
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  hudTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 5,
+  },
+  hudSubtitle: {
+    fontSize: 12,
+    color: '#BDC3C7',
+  },
+  hudControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
   startButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: '#27AE60',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  stopButton: {
+    backgroundColor: '#E74C3C',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
   },
   resetButton: {
-    backgroundColor: '#F44336',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: '#F39C12',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: 'white',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  // Bottom UI
+  inputContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    padding: 15,
+    borderRadius: 10,
+    margin: 10,
+    minHeight: 100,
+  },
+  sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 10,
+  },
+  debugContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    padding: 15,
+    borderRadius: 10,
+    margin: 10,
+  },
+  debugText: {
+    color: '#BDC3C7',
+    fontSize: 12,
+    marginBottom: 3,
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 18,
+    marginTop: 20,
+    textAlign: 'center',
   },
 });
 

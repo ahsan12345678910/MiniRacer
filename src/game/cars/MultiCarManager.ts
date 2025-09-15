@@ -125,6 +125,10 @@ export class MultiCarManager {
    */
   update(deltaTime: number, playerInputs: CarInputs, surfaceProperties: any): void {
     if (!this.state.raceStarted) {
+      // Only log this occasionally to avoid spam
+      if (Math.random() < 0.01) { // 1% chance
+        console.log('⚠️ MultiCarManager: Race not started, skipping update. raceStarted:', this.state.raceStarted);
+      }
       return;
     }
 
@@ -191,14 +195,17 @@ export class MultiCarManager {
    * Start the race
    */
   startRace(): void {
+    console.log('🏁 MultiCarManager: Starting race, setting raceStarted = true');
     this.state.raceStarted = true;
     this.state.raceTime = 0;
+    console.log('🏁 MultiCarManager: Race state after start:', this.state.raceStarted);
   }
 
   /**
    * Stop the race
    */
   stopRace(): void {
+    console.log('🛑 MultiCarManager: Stopping race, setting raceStarted = false');
     this.state.raceStarted = false;
   }
 
@@ -206,6 +213,7 @@ export class MultiCarManager {
    * Reset all cars to start positions
    */
   resetRace(): void {
+    console.log('🔄 MultiCarManager: Resetting race, setting raceStarted = false');
     // Reset player car
     const playerStart = this.getStartPosition(0);
     this.state.playerCar = {

@@ -19,6 +19,14 @@ export interface Surface {
   friction: number; // 0-1
 }
 
+export interface PowerUpEffects {
+  speedMultiplier: number;
+  maxSpeedIncrease: number;
+  accelerationBoost: number;
+  frictionReduction: number;
+  isInvulnerable: boolean;
+}
+
 /**
  * Updates car physics for one timestep
  * @param car - Car state to update (mutated)
@@ -26,13 +34,15 @@ export interface Surface {
  * @param surface - Surface properties affecting friction
  * @param walls - Wall segments for collision detection
  * @param dt - Time step in seconds
+ * @param powerUpEffects - Optional power-up effects to apply
  */
 export function updateCar(
   car: CarState,
   inputs: CarInputs,
   surface: Surface,
   walls: Array<[number, number, number, number]>,
-  dt: number
+  dt: number,
+  powerUpEffects?: PowerUpEffects
 ): void {
   // Clamp inputs to valid ranges
   const steer = Math.max(-1, Math.min(1, inputs.steer));
@@ -52,22 +62,37 @@ export function updateCar(
 
   // Apply acceleration and braking
   let accelerationForce = 0;
+  let baseAcceleration = 10; // Base acceleration in m/s²
+  let baseBraking = 18; // Base braking in m/s²
+  
+  // Apply power-up effects to acceleration
+  if (powerUpEffects) {
+    baseAcceleration += powerUpEffects.accelerationBoost;
+  }
   
   if (throttle > 0) {
-    accelerationForce += 10 * throttle; // 10 m/s² acceleration
+    accelerationForce += baseAcceleration * throttle;
   }
   
   if (brake > 0) {
-    accelerationForce -= 18 * brake; // 18 m/s² braking
+    accelerationForce -= baseBraking * brake;
   }
 
   // Update velocity based on acceleration
   const currentSpeed = Math.sqrt(car.vx * car.vx + car.vy * car.vy);
   const newSpeed = Math.max(0, currentSpeed + accelerationForce * dt);
   
-  // Clamp speed to maximum
-  const maxSpeed = 22; // 22 m/s (~80 km/h)
-  const clampedSpeed = Math.min(newSpeed, maxSpeed);
+  // Clamp speed to maximum (with power-up effects)
+  let maxSpeed = 22; // Base max speed in m/s (~80 km/h)
+  let speedMultiplier = 1.0;
+  
+  if (powerUpEffects) {
+    maxSpeed += powerUpEffects.maxSpeedIncrease;
+    speedMultiplier = powerUpEffects.speedMultiplier;
+  }
+  
+  const effectiveMaxSpeed = maxSpeed * speedMultiplier;
+  const clampedSpeed = Math.min(newSpeed, effectiveMaxSpeed);
   
   // Stop car if speed is very low
   if (clampedSpeed < 0.1) {
@@ -79,8 +104,13 @@ export function updateCar(
     car.vy = Math.sin(car.angle) * clampedSpeed;
   }
 
-  // Apply surface friction
-  const friction = 0.9 * surface.friction; // Base friction * surface friction
+  // Apply surface friction (with power-up effects)
+  let friction = 0.9 * surface.friction; // Base friction * surface friction
+  
+  if (powerUpEffects) {
+    friction = Math.max(0.1, friction - powerUpEffects.frictionReduction);
+  }
+  
   car.vx *= Math.pow(friction, dt);
   car.vy *= Math.pow(friction, dt);
 
@@ -88,8 +118,10 @@ export function updateCar(
   car.x += car.vx * dt;
   car.y += car.vy * dt;
 
-  // Resolve collisions with walls
-  resolveCollisions(car, walls);
+  // Resolve collisions with walls (skip if invulnerable)
+  if (!powerUpEffects?.isInvulnerable) {
+    resolveCollisions(car, walls);
+  }
 }
 
 /**
@@ -206,3 +238,77 @@ export const SURFACE_TYPES = {
   ICE: { friction: 0.95 },
   SAND: { friction: 0.85 },
 } as const;
+
+/**
+ * Car Model Class
+ * 
+ * Wrapper around the updateCar function for object-oriented usage
+ */
+export class CarModel {
+  private state: CarState;
+  public maxSpeed: number = 22;
+  public acceleration: number = 10;
+  public brakePower: number = 18;
+  public friction: number = 0.9;
+  public turnRate: number = 2.2;
+
+  constructor(initialPosition: { x: number; y: number }, initialAngle: number = 0) {
+    this.state = {
+      x: initialPosition.x,
+      y: initialPosition.y,
+      vx: 0,
+      vy: 0,
+      angle: initialAngle,
+      speed: 0,
+    };
+  }
+
+  /**
+   * Update car physics
+   */
+  update(
+    deltaTime: number,
+    controls: CarInputs,
+    surfaceProperties: any,
+    powerUpEffects?: PowerUpEffects
+  ): void {
+    // Convert surface properties to the format expected by updateCar
+    const surface: Surface = {
+      friction: surfaceProperties.friction || 0.9,
+    };
+
+    // Get walls from track (empty for now, will be handled by collision system)
+    const walls: Array<[number, number, number, number]> = [];
+
+    // Use the updateCar function
+    updateCar(this.state, controls, surface, walls, deltaTime, powerUpEffects);
+  }
+
+  /**
+   * Get current car state
+   */
+  getState(): CarState {
+    return { ...this.state };
+  }
+
+  /**
+   * Set car state
+   */
+  setState(newState: Partial<CarState>): void {
+    this.state = { ...this.state, ...newState };
+  }
+
+  /**
+   * Reset car to start position
+   */
+  resetToStart(position: { x: number; y: number }, angle: number = 0): void {
+    this.state = {
+      x: position.x,
+      y: position.y,
+      vx: 0,
+      vy: 0,
+      angle: angle,
+      speed: 0,
+    };
+  }
+}

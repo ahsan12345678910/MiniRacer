@@ -1,10 +1,11 @@
-import { CarModel, CarInputs } from './physics/CarModel';
+import { CarModel, CarInputs, PowerUpEffects } from './physics/CarModel';
 import { Track } from './track/Track';
 import { loadDefaultTrack } from './track/TrackLoader';
 import { Collision } from './collision/Collision';
 import { useGameStore } from './store/GameStore';
 import { LapSystem, LapSystemEvents } from './LapSystem';
 import { Camera, createCamera } from './camera/Camera';
+import { PowerUpManager } from './powerups/PowerUpManager';
 
 /**
  * Integrated game system combining track, physics, and collision
@@ -15,6 +16,7 @@ export class GameIntegration {
   private collisionSystem: Collision;
   private lapSystem: LapSystem | null = null;
   private camera: Camera;
+  private powerUpManager: PowerUpManager;
   private controls: CarInputs = {
     steer: 0,
     throttle: 0,
@@ -25,6 +27,7 @@ export class GameIntegration {
     this.car = new CarModel({ x: 0, y: 0 }, 0);
     this.collisionSystem = new Collision();
     this.camera = createCamera(screenWidth, screenHeight);
+    this.powerUpManager = new PowerUpManager();
   }
 
   /**
@@ -35,6 +38,7 @@ export class GameIntegration {
       // Load the track
       this.track = await loadDefaultTrack();
       this.collisionSystem.setTrack(this.track);
+      this.powerUpManager.initialize(this.track);
 
       // Initialize lap system
       this.lapSystem = new LapSystem(this.track, 3); // Default to 3 laps
@@ -82,14 +86,32 @@ export class GameIntegration {
       roughness: surface.roughness,
     };
 
+    // Check for power-up collection
+    const collectedPowerUp = this.powerUpManager.checkCollection('player', carState);
+    if (collectedPowerUp) {
+      console.log(`Collected power-up: ${collectedPowerUp.config.name}`);
+    }
+
+    // Get power-up effects for the car
+    const powerUpState = this.powerUpManager.getCarPowerUpState('player');
+    
+    // Convert to PowerUpEffects format
+    const powerUpEffectsFormatted: PowerUpEffects = {
+      speedMultiplier: powerUpState.speedBoostMultiplier,
+      maxSpeedIncrease: powerUpState.maxSpeedIncrease,
+      accelerationBoost: powerUpState.accelerationBoost,
+      frictionReduction: powerUpState.frictionReduction,
+      isInvulnerable: powerUpState.isInvulnerable,
+    };
+
     // Log controls and car state before update
-    if (this.controls.accelerate || this.controls.brake || this.controls.turnLeft || this.controls.turnRight) {
+    if (this.controls.throttle > 0 || this.controls.brake > 0 || Math.abs(this.controls.steer) > 0.1) {
       console.log('GameIntegration: Updating with controls:', this.controls);
       console.log('GameIntegration: Car state before update:', carState);
     }
 
-    // Update car physics
-    this.car.update(deltaTime, this.controls, surfaceProperties);
+    // Update car physics with power-up effects
+    this.car.update(deltaTime, this.controls, surfaceProperties, powerUpEffectsFormatted);
 
     // Check for collisions
     const collisionResult = this.collisionSystem.resolveBarrierCollision(
@@ -122,6 +144,9 @@ export class GameIntegration {
       this.lapSystem.update(this.car, deltaTime);
     }
 
+    // Update power-up manager
+    this.powerUpManager.update(deltaTime);
+
     // Update camera to follow the car
     const currentCarState = this.car.getState();
     this.camera.setTarget(currentCarState.position.x, currentCarState.position.y);
@@ -131,7 +156,7 @@ export class GameIntegration {
     this.updateGameStore();
     
     // Log car state after update if controls were active
-    if (this.controls.accelerate || this.controls.brake || this.controls.turnLeft || this.controls.turnRight) {
+    if (this.controls.throttle > 0 || this.controls.brake > 0 || Math.abs(this.controls.steer) > 0.1) {
       const newCarState = this.car.getState();
       console.log('GameIntegration: Car state after update:', newCarState);
     }
@@ -306,6 +331,27 @@ export class GameIntegration {
    */
   updateCameraDimensions(width: number, height: number): void {
     this.camera.updateScreenDimensions(width, height);
+  }
+
+  /**
+   * Get all active power-ups
+   */
+  getActivePowerUps() {
+    return this.powerUpManager.getActivePowerUps();
+  }
+
+  /**
+   * Get power-up state for a specific car
+   */
+  getCarPowerUpState(carId: string) {
+    return this.powerUpManager.getCarPowerUpState(carId);
+  }
+
+  /**
+   * Clear all power-ups (for game reset)
+   */
+  clearPowerUps(): void {
+    this.powerUpManager.clearAll();
   }
 }
 
