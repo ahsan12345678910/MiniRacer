@@ -129,17 +129,43 @@ const SimpleGameScreen: React.FC = () => {
           ]} 
         />
 
-        {/* Enhanced car - stays in center */}
+        {/* Enhanced car with shadow - stays in center */}
         <View
           style={[
-            styles.car,
+            styles.carShadow,
             {
-              left: car.x,
-              top: car.y,
+              left: car.x - 20,
+              top: car.y - 10 + 2,
               transform: [{ rotate: `${car.angle * 180 / Math.PI}deg` }],
             },
           ]}
         />
+        <View
+          style={[
+            styles.carBody,
+            {
+              left: car.x - 20,
+              top: car.y - 10,
+              transform: [{ rotate: `${car.angle * 180 / Math.PI}deg` }],
+            },
+          ]}
+        >
+          {/* Car Windows */}
+          <View style={styles.carWindows} />
+          
+          {/* Car Headlights */}
+          <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
+          <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
+          
+          {/* Car Wheels */}
+          <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
+          <View style={[styles.carWheel, styles.carWheelFrontRight]} />
+          <View style={[styles.carWheel, styles.carWheelRearLeft]} />
+          <View style={[styles.carWheel, styles.carWheelRearRight]} />
+          
+          {/* Car Spoiler */}
+          <View style={styles.carSpoiler} />
+        </View>
       </View>
 
       {/* Simple HUD */}
@@ -254,22 +280,100 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  car: {
+  // Car Shadow
+  carShadow: {
     position: 'absolute',
-    width: 35,
-    height: 18,
-    backgroundColor: '#FF3333',
-    borderRadius: 4,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
+    width: 40,
+    height: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 8,
+    transform: [{ skewX: '15deg' }],
+  },
+  // Car Body
+  carBody: {
+    position: 'absolute',
+    width: 40,
+    height: 20,
+    backgroundColor: '#FF4444',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#CC3333',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.3,
     shadowRadius: 3,
-    elevation: 4,
+    elevation: 5,
+  },
+  // Car Windows
+  carWindows: {
+    position: 'absolute',
+    top: 2,
+    left: 4,
+    right: 4,
+    height: 8,
+    backgroundColor: 'rgba(135, 206, 250, 0.8)',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 149, 237, 0.6)',
+  },
+  // Car Headlights
+  carHeadlight: {
+    position: 'absolute',
+    width: 4,
+    height: 3,
+    backgroundColor: '#FFFF99',
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  carHeadlightLeft: {
+    top: 2,
+    left: 2,
+  },
+  carHeadlightRight: {
+    top: 2,
+    right: 2,
+  },
+  // Car Wheels
+  carWheel: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    backgroundColor: '#333333',
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: '#666666',
+  },
+  carWheelFrontLeft: {
+    top: 1,
+    left: 1,
+  },
+  carWheelFrontRight: {
+    top: 1,
+    right: 1,
+  },
+  carWheelRearLeft: {
+    bottom: 1,
+    left: 1,
+  },
+  carWheelRearRight: {
+    bottom: 1,
+    right: 1,
+  },
+  // Car Spoiler
+  carSpoiler: {
+    position: 'absolute',
+    top: -2,
+    left: 8,
+    right: 8,
+    height: 2,
+    backgroundColor: '#222222',
+    borderRadius: 1,
+    borderWidth: 1,
+    borderColor: '#444444',
   },
   hud: {
     position: 'absolute',

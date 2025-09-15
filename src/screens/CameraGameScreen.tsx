@@ -11,24 +11,27 @@ import { FixedStepLoop } from '../game/loop/FixedStepLoop';
 import { GameCore, makeInitialGame, resetCarAtStart } from '../game/state/GameState';
 import { loadTrack } from '../game/world/TrackLoader';
 import { updateCar, SURFACE_TYPES } from '../game/physics/CarModel';
-import { resolve } from '../game/physics/Collision';
 import { controlsRef } from '../game/input/InputManager';
 import { useUIStore } from '../game/state/UIState';
 import { TouchZones, ButtonsPad, VirtualJoystick } from '../game/input/InputManager';
 import { HUD } from '../ui/HUD';
+import { CameraView, TrackTile, Car, CameraControls } from '../ui/Camera';
+import { createCamera } from '../game/camera/Camera';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-const GameScreen: React.FC = () => {
+const CameraGameScreen: React.FC = () => {
   // Refs for game state
   const gameRef = useRef<GameCore>(makeInitialGame());
   const trackRef = useRef<any>(null);
   const loopRef = useRef<FixedStepLoop | null>(null);
   const mountedRef = useRef(true);
+  const cameraRef = useRef(createCamera(screenWidth, screenHeight));
 
   // React state
   const [ready, setReady] = useState(false);
   const [inputMode, setInputMode] = useState<'touchZones' | 'joystick'>('touchZones');
+  const [cameraControlsVisible, setCameraControlsVisible] = useState(false);
 
   // UI store
   const { setSnapshot, setPaused, paused } = useUIStore();
@@ -47,6 +50,11 @@ const GameScreen: React.FC = () => {
         
         // Place car at start position
         resetCarAtStart(gameRef.current);
+        
+        // Set camera to follow car initially
+        const car = gameRef.current.car;
+        cameraRef.current.setTarget(car.x, car.y);
+        cameraRef.current.setPosition(car.x, car.y);
         
         setReady(true);
       } catch (error) {
@@ -79,6 +87,10 @@ const GameScreen: React.FC = () => {
     
     // Update car physics
     updateCar(game.car, controls, surfaceType, game.track.walls, dt);
+    
+    // Update camera to follow the car
+    cameraRef.current.setTarget(game.car.x, game.car.y);
+    cameraRef.current.update(dt);
     
     // Update lap system (simplified)
     const startLine = game.track.startLine;
@@ -170,74 +182,54 @@ const GameScreen: React.FC = () => {
     );
   }
 
-  // Render game
+  // Render game with camera
   return (
     <View style={styles.container}>
-      {/* Track Background */}
-      <View style={styles.trackBackground} pointerEvents="none">
-        {/* Tiled track pattern */}
+      {/* Camera View - applies camera transformations */}
+      <CameraView camera={cameraRef.current} style={styles.cameraView}>
+        {/* Grass background */}
+        <View style={styles.grassBackground} />
+        
+        {/* Track tiles */}
         {Array.from({ length: 20 }, (_, i) => (
-          <View
+          <TrackTile
             key={i}
-            style={[
-              styles.trackTile,
-              {
-                left: (i % 5) * 80,
-                top: Math.floor(i / 5) * 80,
-              },
-            ]}
+            camera={cameraRef.current}
+            worldX={(i % 5) * 80}
+            worldY={Math.floor(i / 5) * 80}
+            width={80}
+            height={80}
+            color="#4a6a4a"
+            borderColor="#3a5a3a"
           />
         ))}
 
         {/* Track boundaries */}
         <View style={styles.trackBoundary} />
 
-        {/* Car with Shadow */}
-        <View
-          style={[
-            styles.carShadow,
-            {
-              left: gameRef.current.car.x - 20,
-              top: gameRef.current.car.y - 10 + 2,
-              transform: [{ rotate: `${gameRef.current.car.angle * 180 / Math.PI}deg` }],
-            },
-          ]}
+        {/* Car with camera positioning */}
+        <Car
+          camera={cameraRef.current}
+          worldX={gameRef.current.car.x}
+          worldY={gameRef.current.car.y}
+          angle={gameRef.current.car.angle}
         />
-        <View
-          style={[
-            styles.carBody,
-            {
-              left: gameRef.current.car.x - 20,
-              top: gameRef.current.car.y - 10,
-              transform: [{ rotate: `${gameRef.current.car.angle * 180 / Math.PI}deg` }],
-            },
-          ]}
-        >
-          {/* Car Windows */}
-          <View style={styles.carWindows} />
-          
-          {/* Car Headlights */}
-          <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
-          <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
-          
-          {/* Car Wheels */}
-          <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
-          <View style={[styles.carWheel, styles.carWheelFrontRight]} />
-          <View style={[styles.carWheel, styles.carWheelRearLeft]} />
-          <View style={[styles.carWheel, styles.carWheelRearRight]} />
-          
-          {/* Car Spoiler */}
-          <View style={styles.carSpoiler} />
-        </View>
-      </View>
+      </CameraView>
 
-      {/* HUD Overlay */}
+      {/* HUD Overlay - not affected by camera */}
       <HUD onPause={handlePause} onMenu={handleBackToMenu} />
 
-      {/* Input Controls */}
+      {/* Input Controls - not affected by camera */}
       {inputMode === 'touchZones' && <TouchZones />}
       {inputMode === 'joystick' && <VirtualJoystick />}
       <ButtonsPad />
+
+      {/* Camera Controls */}
+      <CameraControls
+        camera={cameraRef.current}
+        visible={cameraControlsVisible}
+        onToggle={() => setCameraControlsVisible(!cameraControlsVisible)}
+      />
     </View>
   );
 };
@@ -258,18 +250,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginTop: 20,
   },
-  trackBackground: {
+  cameraView: {
     flex: 1,
     backgroundColor: '#2a4a2a', // Grass color
-    position: 'relative',
   },
-  trackTile: {
+  grassBackground: {
     position: 'absolute',
-    width: 80,
-    height: 80,
-    backgroundColor: '#4a6a4a',
-    borderWidth: 1,
-    borderColor: '#3a5a3a',
+    top: -2000,
+    left: -2000,
+    width: 4000,
+    height: 4000,
+    backgroundColor: '#2a4a2a',
   },
   trackBoundary: {
     position: 'absolute',
@@ -282,101 +273,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'transparent',
   },
-  // Car Shadow
-  carShadow: {
-    position: 'absolute',
-    width: 40,
-    height: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 8,
-    transform: [{ skewX: '15deg' }],
-  },
-  // Car Body
-  carBody: {
-    position: 'absolute',
-    width: 40,
-    height: 20,
-    backgroundColor: '#FF4444',
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#CC3333',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  // Car Windows
-  carWindows: {
-    position: 'absolute',
-    top: 2,
-    left: 4,
-    right: 4,
-    height: 8,
-    backgroundColor: 'rgba(135, 206, 250, 0.8)',
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(100, 149, 237, 0.6)',
-  },
-  // Car Headlights
-  carHeadlight: {
-    position: 'absolute',
-    width: 4,
-    height: 3,
-    backgroundColor: '#FFFF99',
-    borderRadius: 2,
-    borderWidth: 1,
-    borderColor: '#FFD700',
-  },
-  carHeadlightLeft: {
-    top: 2,
-    left: 2,
-  },
-  carHeadlightRight: {
-    top: 2,
-    right: 2,
-  },
-  // Car Wheels
-  carWheel: {
-    position: 'absolute',
-    width: 6,
-    height: 6,
-    backgroundColor: '#333333',
-    borderRadius: 3,
-    borderWidth: 1,
-    borderColor: '#666666',
-  },
-  carWheelFrontLeft: {
-    top: 1,
-    left: 1,
-  },
-  carWheelFrontRight: {
-    top: 1,
-    right: 1,
-  },
-  carWheelRearLeft: {
-    bottom: 1,
-    left: 1,
-  },
-  carWheelRearRight: {
-    bottom: 1,
-    right: 1,
-  },
-  // Car Spoiler
-  carSpoiler: {
-    position: 'absolute',
-    top: -2,
-    left: 8,
-    right: 8,
-    height: 2,
-    backgroundColor: '#222222',
-    borderRadius: 1,
-    borderWidth: 1,
-    borderColor: '#444444',
-  },
 });
 
-export default GameScreen;
+export default CameraGameScreen;
