@@ -32,6 +32,11 @@ export interface SimpleCarConfig {
   airResistance: number;      // Air resistance coefficient
   lateralFriction: number;    // Lateral friction coefficient
   
+  // Deceleration and Momentum
+  engineBraking: number;      // Engine braking coefficient
+  momentumDecay: number;      // Momentum decay coefficient
+  coastingResistance: number; // Coasting resistance coefficient
+  
   // Braking
   brakeForce: number;         // Maximum brake force (N)
 }
@@ -70,6 +75,11 @@ export class SimpleCar {
       rollingResistance: 0.02,   // Rolling resistance
       airResistance: 0.3,        // Air drag coefficient
       lateralFriction: 0.8,      // Tire friction coefficient
+      
+      // Deceleration and Momentum (realistic values)
+      engineBraking: 0.15,      // Engine braking coefficient
+      momentumDecay: 0.8,        // Momentum decay coefficient
+      coastingResistance: 0.05,  // Coasting resistance coefficient
       
       // Braking
       brakeForce: 8000,          // 8000 N brake force
@@ -146,6 +156,43 @@ export class SimpleCar {
     const airResistanceForce = this.config.airResistance * currentSpeed * currentSpeed;
     const airResistanceAccel = airResistanceForce / this.config.mass;
 
+    // 5. ENGINE BRAKING (Realistic engine braking when not accelerating)
+    let engineBrakingAccel = 0;
+    if (throttle === 0 && currentSpeed > 0.5) {
+      // Engine braking is stronger at higher speeds (realistic)
+      const speedRatio = currentSpeed / this.config.maxSpeed;
+      const engineBrakingForce = this.config.enginePower * this.config.engineBraking * speedRatio;
+      engineBrakingAccel = engineBrakingForce / this.config.mass;
+      
+      if (shouldLog) {
+        console.log('🚗 SimpleCar: Engine braking force:', engineBrakingAccel.toFixed(2), 'speed ratio:', speedRatio.toFixed(2));
+      }
+    }
+
+    // 6. MOMENTUM CONSERVATION (Realistic momentum behavior)
+    let momentumDecayAccel = 0;
+    if (throttle === 0 && brake === 0 && currentSpeed > 0.1) {
+      // Gradual momentum decay (like real car coasting)
+      const momentumDecayForce = this.config.mass * this.config.momentumDecay * currentSpeed;
+      momentumDecayAccel = momentumDecayForce / this.config.mass;
+      
+      if (shouldLog) {
+        console.log('🚗 SimpleCar: Momentum decay:', momentumDecayAccel.toFixed(2), 'speed:', currentSpeed.toFixed(2));
+      }
+    }
+
+    // 7. COASTING RESISTANCE (Additional resistance when coasting)
+    let coastingResistanceAccel = 0;
+    if (throttle === 0 && brake === 0 && currentSpeed > 0.2) {
+      // Additional resistance when coasting (like real car)
+      const coastingResistanceForce = this.config.mass * this.config.coastingResistance * currentSpeed;
+      coastingResistanceAccel = coastingResistanceForce / this.config.mass;
+      
+      if (shouldLog) {
+        console.log('🚗 SimpleCar: Coasting resistance:', coastingResistanceAccel.toFixed(2));
+      }
+    }
+
     if (shouldLog && currentSpeed > 1) {
       console.log('🚗 SimpleCar: Rolling resistance:', rollingResistanceAccel.toFixed(2), 'Air resistance:', airResistanceAccel.toFixed(2));
     }
@@ -171,8 +218,8 @@ export class SimpleCar {
 
     // === APPLY FORCES ===
 
-    // Calculate total longitudinal acceleration
-    const totalLongitudinalAccel = engineForce - brakeForce - rollingResistanceAccel - airResistanceAccel;
+    // Calculate total longitudinal acceleration (including deceleration forces)
+    const totalLongitudinalAccel = engineForce - brakeForce - rollingResistanceAccel - airResistanceAccel - engineBrakingAccel - momentumDecayAccel - coastingResistanceAccel;
     
     // Apply longitudinal acceleration
     const accelerationX = Math.cos(this.state.angle) * totalLongitudinalAccel;
@@ -211,6 +258,18 @@ export class SimpleCar {
       this.state.speed = this.config.maxSpeed;
     }
 
+    // Apply minimum speed threshold (prevents floating point precision issues)
+    const minSpeed = 0.01; // 1 cm/s minimum speed
+    if (this.state.speed < minSpeed && this.state.speed > 0) {
+      this.state.vx = 0;
+      this.state.vy = 0;
+      this.state.speed = 0;
+      
+      if (shouldLog) {
+        console.log('🚗 SimpleCar: Car stopped due to minimum speed threshold');
+      }
+    }
+
     // Update position
     const oldX = this.state.x;
     const oldY = this.state.y;
@@ -221,6 +280,7 @@ export class SimpleCar {
       console.log('🚗 SimpleCar: Position update - old:', oldX.toFixed(2), oldY.toFixed(2), 'new:', this.state.x.toFixed(2), this.state.y.toFixed(2));
       console.log('🚗 SimpleCar: Velocity:', this.state.vx.toFixed(2), this.state.vy.toFixed(2), 'speed:', this.state.speed.toFixed(2));
       console.log('🚗 SimpleCar: Forces - engine:', engineForce.toFixed(2), 'brake:', brakeForce.toFixed(2), 'total accel:', totalLongitudinalAccel.toFixed(2));
+      console.log('🚗 SimpleCar: Deceleration - engine braking:', engineBrakingAccel.toFixed(2), 'momentum decay:', momentumDecayAccel.toFixed(2), 'coasting:', coastingResistanceAccel.toFixed(2));
     }
   }
 
