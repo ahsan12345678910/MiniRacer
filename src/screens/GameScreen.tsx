@@ -204,6 +204,15 @@ const GameScreen: React.FC = () => {
             </Text>
           </View>
         </View>
+
+        {/* Countdown Display */}
+        {raceState?.countdownActive && (
+          <View style={styles.countdownContainer}>
+            <Text style={styles.countdownText}>
+              {raceState.countdown > 0 ? Math.ceil(raceState.countdown).toString() : 'GO!'}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Input Controls */}
@@ -444,6 +453,28 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginTop: 20,
     textAlign: 'center',
+  },
+  // Countdown Styles
+  countdownContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -50 }, { translateY: -50 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: 100,
+    width: 200,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  countdownText: {
+    fontSize: 80,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
 });
 

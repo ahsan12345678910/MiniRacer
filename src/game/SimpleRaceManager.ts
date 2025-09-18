@@ -15,6 +15,8 @@ export interface SimpleRaceState {
   raceTime: number;
   playerPosition: { x: number; y: number };
   aiPositions: Array<{ x: number; y: number }>;
+  countdown: number; // 3, 2, 1, 0 (GO)
+  countdownActive: boolean;
 }
 
 export class SimpleRaceManager {
@@ -36,7 +38,7 @@ export class SimpleRaceManager {
     this.state = {
       playerCar,
       aiCars,
-      raceStarted: true, // Start race by default
+      raceStarted: false, // Don't start race immediately
       raceTime: 0,
       playerPosition: { x: 250, y: 100 },
       aiPositions: [
@@ -44,6 +46,8 @@ export class SimpleRaceManager {
         { x: 320, y: 100 },
         { x: 350, y: 100 },
       ],
+      countdown: 3, // Start countdown at 3
+      countdownActive: true, // Countdown is active
     };
 
     console.log('🏁 SimpleRaceManager: Created with', aiCars.length, 'AI cars');
@@ -51,18 +55,18 @@ export class SimpleRaceManager {
   }
 
   /**
-   * Start the race
+   * Start the race (starts countdown)
    */
   startRace(): void {
     console.log('🏁 SimpleRaceManager: startRace() called');
-    console.log('🏁 SimpleRaceManager: Previous race state:', this.state.raceStarted);
+    console.log('🏁 SimpleRaceManager: Starting countdown...');
     
-    this.state.raceStarted = true;
+    this.state.countdownActive = true;
+    this.state.countdown = 3;
+    this.state.raceStarted = false; // Don't start race until countdown finishes
     this.state.raceTime = 0;
     
-    console.log('🏁 SimpleRaceManager: Race started!');
-    console.log('🏁 SimpleRaceManager: New race state:', this.state.raceStarted);
-    console.log('🏁 SimpleRaceManager: Player car can now move!');
+    console.log('🏁 SimpleRaceManager: Countdown started at 3');
   }
 
   /**
@@ -79,6 +83,8 @@ export class SimpleRaceManager {
   resetRace(): void {
     this.state.raceStarted = false;
     this.state.raceTime = 0;
+    this.state.countdown = 3;
+    this.state.countdownActive = true;
     
     // Reset player car to start line
     this.state.playerCar.resetToStart({ x: 250, y: 100 }, 0);
@@ -93,7 +99,7 @@ export class SimpleRaceManager {
       car.resetToStart(positions[index], 0);
     });
 
-    console.log('🏁 SimpleRaceManager: Race reset!');
+    console.log('🏁 SimpleRaceManager: Race reset! Countdown restarted at 3');
   }
 
   /**
@@ -104,7 +110,22 @@ export class SimpleRaceManager {
     const shouldLog = currentTime - this.lastLogTime > 1000; // Log every 1 second for more frequent updates
 
     // ALWAYS log race state for debugging
-    console.log('🏁 SimpleRaceManager: Update called - raceStarted:', this.state.raceStarted, 'deltaTime:', deltaTime.toFixed(3));
+    console.log('🏁 SimpleRaceManager: Update called - raceStarted:', this.state.raceStarted, 'countdownActive:', this.state.countdownActive, 'countdown:', this.state.countdown, 'deltaTime:', deltaTime.toFixed(3));
+
+    // Handle countdown
+    if (this.state.countdownActive) {
+      this.state.countdown -= deltaTime;
+      console.log('🏁 SimpleRaceManager: Countdown at:', this.state.countdown.toFixed(1));
+      
+      if (this.state.countdown <= 0) {
+        this.state.countdownActive = false;
+        this.state.raceStarted = true;
+        console.log('🏁 SimpleRaceManager: GO! Race started!');
+      } else {
+        console.log('🏁 SimpleRaceManager: Countdown active, cars cannot move yet');
+        return; // Don't update cars during countdown
+      }
+    }
 
     if (!this.state.raceStarted) {
       console.log('🏁 SimpleRaceManager: Race not started, skipping update');
@@ -301,6 +322,20 @@ export class SimpleRaceManager {
    */
   getRaceTime(): number {
     return this.state.raceTime;
+  }
+
+  /**
+   * Get countdown value
+   */
+  getCountdown(): number {
+    return this.state.countdown;
+  }
+
+  /**
+   * Check if countdown is active
+   */
+  isCountdownActive(): boolean {
+    return this.state.countdownActive;
   }
 }
 
