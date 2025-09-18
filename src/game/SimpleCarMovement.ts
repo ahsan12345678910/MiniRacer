@@ -13,11 +13,27 @@ export interface SimpleCarInputs {
 }
 
 export interface SimpleCarConfig {
-  maxSpeed: number;
-  acceleration: number;
-  brakePower: number;
-  friction: number;
-  turnRate: number;
+  // Engine and Power
+  maxSpeed: number;           // Maximum speed (m/s)
+  enginePower: number;        // Engine power (N)
+  maxTorque: number;          // Maximum torque (N⋅m)
+  
+  // Mass and Inertia
+  mass: number;              // Car mass (kg)
+  momentOfInertia: number;    // Rotational inertia (kg⋅m²)
+  
+  // Wheels and Traction
+  wheelRadius: number;        // Wheel radius (m)
+  wheelBase: number;          // Distance between front and rear axles (m)
+  maxSteerAngle: number;      // Maximum steering angle (radians)
+  
+  // Friction and Drag
+  rollingResistance: number;  // Rolling resistance coefficient
+  airResistance: number;      // Air resistance coefficient
+  lateralFriction: number;    // Lateral friction coefficient
+  
+  // Braking
+  brakeForce: number;         // Maximum brake force (N)
 }
 
 export class SimpleCar {
@@ -36,18 +52,34 @@ export class SimpleCar {
     };
 
     this.config = {
-      maxSpeed: 15, // Reduced for easier control
-      acceleration: 8, // Reduced for easier control
-      brakePower: 12, // Reduced for easier control
-      friction: 0.95, // Higher friction for more control
-      turnRate: 3.0, // Higher turn rate for more responsive steering
+      // Engine and Power (realistic values)
+      maxSpeed: 50,              // ~180 km/h maximum speed
+      enginePower: 150000,       // 150 kW engine power
+      maxTorque: 300,            // 300 N⋅m torque
+      
+      // Mass and Inertia (typical car values)
+      mass: 1200,                // 1200 kg car mass
+      momentOfInertia: 2000,     // Rotational inertia
+      
+      // Wheels and Traction
+      wheelRadius: 0.3,          // 30 cm wheel radius
+      wheelBase: 2.5,            // 2.5m wheelbase
+      maxSteerAngle: 0.5,        // ~30 degrees max steering
+      
+      // Friction and Drag (realistic coefficients)
+      rollingResistance: 0.02,   // Rolling resistance
+      airResistance: 0.3,        // Air drag coefficient
+      lateralFriction: 0.8,      // Tire friction coefficient
+      
+      // Braking
+      brakeForce: 8000,          // 8000 N brake force
     };
 
     console.log('🚗 SimpleCar: Created at position', initialPosition, 'angle:', initialAngle);
   }
 
   /**
-   * Update car physics with detailed logging
+   * Update car physics with realistic physics simulation
    */
   update(deltaTime: number, inputs: SimpleCarInputs): void {
     const currentTime = Date.now();
@@ -76,64 +108,108 @@ export class SimpleCar {
       console.log('🚗 SimpleCar: Active inputs - steer:', steer, 'throttle:', throttle, 'brake:', brake);
     }
 
-    // Apply steering
-    if (Math.abs(steer) > 0.01) {
-      const speed = Math.sqrt(this.state.vx * this.state.vx + this.state.vy * this.state.vy);
-      const speedFactor = Math.min(speed / (this.config.maxSpeed * 0.3), 1); // More responsive at low speeds
-      const effectiveTurnRate = this.config.turnRate * (0.5 + speedFactor * 0.5); // Turn rate scales with speed
-      
-      const angleChange = steer * effectiveTurnRate * deltaTime;
-      this.state.angle += angleChange;
-
-      if (shouldLog && Math.abs(steer) > 0.1) {
-        console.log('🚗 SimpleCar: Steering - speed:', speed.toFixed(2), 'speedFactor:', speedFactor.toFixed(2), 'angleChange:', angleChange.toFixed(3));
-      }
-    }
-
-    // Apply acceleration and braking
-    let accelerationForce = 0;
-    
-    if (throttle > 0) {
-      accelerationForce += this.config.acceleration * throttle;
-      if (shouldLog) {
-        console.log('🚗 SimpleCar: Accelerating with force:', accelerationForce.toFixed(2));
-      }
-    }
-    
-    if (brake > 0) {
-      accelerationForce -= this.config.brakePower * brake;
-      if (shouldLog) {
-        console.log('🚗 SimpleCar: Braking with force:', (this.config.brakePower * brake).toFixed(2));
-      }
-    }
-
-    // Calculate current speed
+    // Get current velocity and speed
     const currentSpeed = Math.sqrt(this.state.vx * this.state.vx + this.state.vy * this.state.vy);
+    const velocityAngle = Math.atan2(this.state.vy, this.state.vx);
     
-    // Apply acceleration to speed
-    const newSpeed = Math.max(0, currentSpeed + accelerationForce * deltaTime);
-    const clampedSpeed = Math.min(newSpeed, this.config.maxSpeed);
-    
-    if (shouldLog && (throttle > 0 || brake > 0)) {
-      console.log('🚗 SimpleCar: Speed change - current:', currentSpeed.toFixed(2), 'new:', newSpeed.toFixed(2), 'clamped:', clampedSpeed.toFixed(2));
+    console.log('🚗 SimpleCar: Current speed:', currentSpeed.toFixed(2), 'velocity angle:', velocityAngle.toFixed(2));
+
+    // === REALISTIC PHYSICS CALCULATIONS ===
+
+    // 1. ENGINE FORCE (Realistic engine power curve)
+    let engineForce = 0;
+    if (throttle > 0) {
+      // Engine power decreases at high speeds (realistic power curve)
+      const speedRatio = currentSpeed / this.config.maxSpeed;
+      const powerReduction = Math.max(0.3, 1 - speedRatio * 0.7); // Power reduces at high speeds
+      engineForce = (this.config.enginePower * throttle * powerReduction) / this.config.mass;
+      
+      if (shouldLog) {
+        console.log('🚗 SimpleCar: Engine force:', engineForce.toFixed(2), 'power reduction:', powerReduction.toFixed(2));
+      }
     }
 
-    // Update velocity components
-    if (clampedSpeed < 0.1) {
-      this.state.vx = 0;
-      this.state.vy = 0;
-      this.state.speed = 0;
-    } else {
-      // Always update velocity based on current angle and speed
-      this.state.vx = Math.cos(this.state.angle) * clampedSpeed;
-      this.state.vy = Math.sin(this.state.angle) * clampedSpeed;
-      this.state.speed = clampedSpeed;
+    // 2. BRAKE FORCE
+    let brakeForce = 0;
+    if (brake > 0) {
+      brakeForce = (this.config.brakeForce * brake) / this.config.mass;
+      if (shouldLog) {
+        console.log('🚗 SimpleCar: Brake force:', brakeForce.toFixed(2));
+      }
     }
 
-    // Apply friction
-    this.state.vx *= Math.pow(this.config.friction, deltaTime);
-    this.state.vy *= Math.pow(this.config.friction, deltaTime);
+    // 3. ROLLING RESISTANCE (Realistic rolling resistance)
+    const rollingResistanceForce = this.config.rollingResistance * this.config.mass * 9.81; // F = μ * m * g
+    const rollingResistanceAccel = rollingResistanceForce / this.config.mass;
+
+    // 4. AIR RESISTANCE (Realistic air drag - proportional to speed²)
+    const airResistanceForce = this.config.airResistance * currentSpeed * currentSpeed;
+    const airResistanceAccel = airResistanceForce / this.config.mass;
+
+    if (shouldLog && currentSpeed > 1) {
+      console.log('🚗 SimpleCar: Rolling resistance:', rollingResistanceAccel.toFixed(2), 'Air resistance:', airResistanceAccel.toFixed(2));
+    }
+
+    // 5. STEERING (Realistic wheel physics)
+    let angularVelocity = 0;
+    if (Math.abs(steer) > 0.01 && currentSpeed > 0.1) {
+      // Steering angle affects turning radius
+      const steerAngle = steer * this.config.maxSteerAngle;
+      const turnRadius = this.config.wheelBase / Math.tan(Math.abs(steerAngle));
+      
+      // Angular velocity = v / r (realistic turning)
+      angularVelocity = (currentSpeed / turnRadius) * Math.sign(steer);
+      
+      if (shouldLog && Math.abs(steer) > 0.1) {
+        console.log('🚗 SimpleCar: Steering - steer angle:', steerAngle.toFixed(3), 'turn radius:', turnRadius.toFixed(2), 'angular velocity:', angularVelocity.toFixed(3));
+      }
+    }
+
+    // 6. LATERAL FRICTION (Realistic tire physics)
+    const lateralForce = this.config.lateralFriction * this.config.mass * 9.81;
+    const maxLateralAccel = lateralForce / this.config.mass;
+
+    // === APPLY FORCES ===
+
+    // Calculate total longitudinal acceleration
+    const totalLongitudinalAccel = engineForce - brakeForce - rollingResistanceAccel - airResistanceAccel;
+    
+    // Apply longitudinal acceleration
+    const accelerationX = Math.cos(this.state.angle) * totalLongitudinalAccel;
+    const accelerationY = Math.sin(this.state.angle) * totalLongitudinalAccel;
+
+    // Update velocity with realistic physics
+    this.state.vx += accelerationX * deltaTime;
+    this.state.vy += accelerationY * deltaTime;
+
+    // Apply angular velocity (realistic turning)
+    this.state.angle += angularVelocity * deltaTime;
+
+    // Apply lateral friction (prevents unrealistic sliding)
+    const lateralVelocity = Math.sqrt(
+      Math.pow(this.state.vx * Math.sin(this.state.angle) - this.state.vy * Math.cos(this.state.angle), 2)
+    );
+    
+    if (lateralVelocity > maxLateralAccel * deltaTime) {
+      // Reduce lateral velocity to realistic levels
+      const reductionFactor = (maxLateralAccel * deltaTime) / lateralVelocity;
+      const lateralVx = this.state.vx * Math.sin(this.state.angle);
+      const lateralVy = this.state.vy * Math.cos(this.state.angle);
+      
+      this.state.vx -= lateralVx * (1 - reductionFactor);
+      this.state.vy -= lateralVy * (1 - reductionFactor);
+    }
+
+    // Update speed
     this.state.speed = Math.sqrt(this.state.vx * this.state.vx + this.state.vy * this.state.vy);
+
+    // Apply speed limits
+    if (this.state.speed > this.config.maxSpeed) {
+      const speedRatio = this.config.maxSpeed / this.state.speed;
+      this.state.vx *= speedRatio;
+      this.state.vy *= speedRatio;
+      this.state.speed = this.config.maxSpeed;
+    }
 
     // Update position
     const oldX = this.state.x;
@@ -144,6 +220,7 @@ export class SimpleCar {
     if (shouldLog && (Math.abs(this.state.vx) > 0.1 || Math.abs(this.state.vy) > 0.1)) {
       console.log('🚗 SimpleCar: Position update - old:', oldX.toFixed(2), oldY.toFixed(2), 'new:', this.state.x.toFixed(2), this.state.y.toFixed(2));
       console.log('🚗 SimpleCar: Velocity:', this.state.vx.toFixed(2), this.state.vy.toFixed(2), 'speed:', this.state.speed.toFixed(2));
+      console.log('🚗 SimpleCar: Forces - engine:', engineForce.toFixed(2), 'brake:', brakeForce.toFixed(2), 'total accel:', totalLongitudinalAccel.toFixed(2));
     }
   }
 
