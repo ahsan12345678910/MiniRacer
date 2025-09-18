@@ -16,20 +16,8 @@ const MenuScreen: React.FC = () => {
     navigation.navigate('Game' as never);
   };
 
-  const handleTestCars = () => {
-    console.log('Test Cars button pressed');
-    navigation.navigate('TestCars' as never);
-  };
 
-  const handleSimpleRace = () => {
-    console.log('Simple Race button pressed');
-    navigation.navigate('SimpleRace' as never);
-  };
 
-  const handleSimpleCarTest = () => {
-    console.log('Simple Car Test button pressed');
-    navigation.navigate('SimpleCarTest' as never);
-  };
 
   const handleSettings = () => {
     // SIMPLIFIED: Removed audio call
@@ -58,15 +46,6 @@ const MenuScreen: React.FC = () => {
       <View style={styles.menuContainer}>
         <TouchableOpacity style={styles.menuButton} onPress={handlePlay}>
           <Text style={styles.buttonText}>🏁 MultiCar Racing</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.testButton]} onPress={handleTestCars}>
-          <Text style={styles.buttonText}>🚗 Test Cars</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.simpleButton]} onPress={handleSimpleRace}>
-          <Text style={styles.buttonText}>🏁 Simple Race (Working!)</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.menuButton, styles.simpleButton]} onPress={handleSimpleCarTest}>
-          <Text style={styles.buttonText}>🚗 Simple Car Test</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuButton} onPress={handleSettings}>
           <Text style={styles.buttonText}>Settings</Text>
@@ -117,12 +96,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-  },
-  testButton: {
-    backgroundColor: '#FF6B35',
-  },
-  simpleButton: {
-    backgroundColor: '#27AE60',
   },
   quitButton: {
     backgroundColor: '#8b0000',

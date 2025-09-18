@@ -53,10 +53,18 @@ export class SimpleCar {
     const currentTime = Date.now();
     const shouldLog = currentTime - this.lastLogTime > 1000; // Log every second
 
+    // ALWAYS log update call for debugging
+    console.log('🚗 SimpleCar: Update called with inputs:', inputs);
+    console.log('🚗 SimpleCar: Current state:', this.getState());
+    console.log('🚗 SimpleCar: DeltaTime:', deltaTime.toFixed(3));
+
     if (shouldLog) {
-      console.log('🚗 SimpleCar: Update called with inputs:', inputs);
-      console.log('🚗 SimpleCar: Current state:', this.getState());
       this.lastLogTime = currentTime;
+    }
+
+    // Always log throttle input for debugging
+    if (inputs.throttle > 0) {
+      console.log('🚗 SimpleCar: THROTTLE INPUT RECEIVED:', inputs.throttle);
     }
 
     // Clamp inputs
@@ -99,11 +107,11 @@ export class SimpleCar {
       }
     }
 
-    // Update velocity based on acceleration
+    // Calculate current speed
     const currentSpeed = Math.sqrt(this.state.vx * this.state.vx + this.state.vy * this.state.vy);
-    const newSpeed = Math.max(0, currentSpeed + accelerationForce * deltaTime);
     
-    // Clamp speed to maximum
+    // Apply acceleration to speed
+    const newSpeed = Math.max(0, currentSpeed + accelerationForce * deltaTime);
     const clampedSpeed = Math.min(newSpeed, this.config.maxSpeed);
     
     if (shouldLog && (throttle > 0 || brake > 0)) {
@@ -116,6 +124,7 @@ export class SimpleCar {
       this.state.vy = 0;
       this.state.speed = 0;
     } else {
+      // Always update velocity based on current angle and speed
       this.state.vx = Math.cos(this.state.angle) * clampedSpeed;
       this.state.vy = Math.sin(this.state.angle) * clampedSpeed;
       this.state.speed = clampedSpeed;

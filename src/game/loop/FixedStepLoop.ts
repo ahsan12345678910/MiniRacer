@@ -21,15 +21,18 @@ export class FixedStepLoop {
 
   start(): void {
     if (this.running) {
+      console.log('🔄 FixedStepLoop: Already running, skipping start');
       return; // NO-OP if already running
     }
     
+    console.log('🔄 FixedStepLoop: Starting game loop');
     this.running = true;
     this.last = performance.now();
     this.acc = 0;
     
     const tick = () => {
       if (!this.running) {
+        console.log('🔄 FixedStepLoop: Not running, stopping tick');
         return;
       }
       
@@ -44,6 +47,7 @@ export class FixedStepLoop {
       // Fixed timestep updates
       let steps = 0;
       while (this.acc >= this.dt && steps < this.maxStepsPerFrame) {
+        console.log('🔄 FixedStepLoop: Calling update with dt:', this.dt.toFixed(3));
         this.update(this.dt);
         this.acc -= this.dt;
         steps++;

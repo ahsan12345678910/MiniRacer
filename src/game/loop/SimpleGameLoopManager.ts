@@ -16,9 +16,15 @@ export class SimpleGameLoopManager implements GameLoopCallback {
 
   // Implementation of GameLoopCallback
   update(deltaTime: number): void {
+    // ALWAYS log game loop updates for debugging
+    console.log('🔄 SimpleGameLoopManager: Update called with deltaTime:', deltaTime.toFixed(3));
+    
     // Update the game integration
     if (this.gameIntegration) {
+      console.log('🔄 SimpleGameLoopManager: Calling game integration update');
       this.gameIntegration.update(deltaTime);
+    } else {
+      console.log('🔄 SimpleGameLoopManager: No game integration set!');
     }
   }
 

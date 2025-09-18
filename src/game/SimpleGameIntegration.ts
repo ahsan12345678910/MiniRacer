@@ -172,13 +172,6 @@ export class SimpleGameIntegration {
     this.car.updateConfig(newConfig);
   }
 
-  /**
-   * Force set controls (for testing)
-   */
-  setTestControls(controls: SimpleCarInputs): void {
-    controlsRef.current = controls;
-    console.log('🎮 SimpleGameIntegration: Test controls set:', controls);
-  }
 }
 
 // Singleton instance

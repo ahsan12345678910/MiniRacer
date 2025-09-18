@@ -60,6 +60,7 @@ export const TouchZones: React.FC = () => {
       const centerX = screenWidth * 0.2;
       const steerValue = (locationX - centerX) / (screenWidth * 0.2);
       controlsRef.current.steer = Math.max(-1, Math.min(1, steerValue));
+      console.log('🎮 TouchZones: Steering input:', controlsRef.current.steer);
     }
     
     // Check if we're in the throttle zone (right 40%)
@@ -68,6 +69,7 @@ export const TouchZones: React.FC = () => {
       const zoneWidth = screenWidth * 0.4;
       const throttleValue = (locationX - zoneStart) / zoneWidth;
       controlsRef.current.throttle = Math.max(0, Math.min(1, throttleValue));
+      console.log('🎮 TouchZones: Throttle input:', controlsRef.current.throttle);
     }
   };
 
@@ -96,6 +98,22 @@ export const TouchZones: React.FC = () => {
         onTouchEnd={handleTouchEnd}
         pointerEvents="auto"
       />
+      
+      {/* Accelerate button */}
+      <TouchableOpacity
+        style={styles.accelerateButton}
+        onPressIn={() => { 
+          controlsRef.current.throttle = 1; 
+          console.log('🎮 TouchZones: Accelerate ON');
+        }}
+        onPressOut={() => { 
+          controlsRef.current.throttle = 0; 
+          console.log('🎮 TouchZones: Accelerate OFF');
+        }}
+        pointerEvents="auto"
+      >
+        <Text style={styles.accelerateButtonText}>ACCELERATE</Text>
+      </TouchableOpacity>
       
       {/* Brake button */}
       <TouchableOpacity
@@ -140,8 +158,14 @@ export const ButtonsPad: React.FC = () => {
       {/* Accelerate Button */}
       <TouchableOpacity
         style={[styles.controlButton, styles.accelerateButton]}
-        onPressIn={() => { controlsRef.current.throttle = 1; }}
-        onPressOut={() => { controlsRef.current.throttle = 0; }}
+        onPressIn={() => { 
+          controlsRef.current.throttle = 1; 
+          console.log('🎮 ButtonsPad: Throttle ON');
+        }}
+        onPressOut={() => { 
+          controlsRef.current.throttle = 0; 
+          console.log('🎮 ButtonsPad: Throttle OFF');
+        }}
         pointerEvents="auto"
       >
         <Text style={styles.controlButtonText}>↑</Text>
@@ -291,6 +315,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+  },
+  accelerateButton: {
+    position: 'absolute',
+    left: 20,
+    bottom: 20,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0, 255, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  accelerateButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   brakeButtonText: {
     color: '#FFFFFF',

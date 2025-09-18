@@ -12,6 +12,8 @@ import { getSimpleGameLoopManager } from '../game/loop/SimpleGameLoopManager';
 import { getSimpleRaceManager } from '../game/SimpleRaceManager';
 import { TouchZones, VirtualJoystick } from '../game/input/InputManager';
 import { createCamera, DEFAULT_CAMERA_SETTINGS } from '../game/camera/Camera';
+import { createRaceTrack } from '../game/track/TrackDesign';
+import { TrackRenderer } from '../game/track/TrackRenderer';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -30,6 +32,7 @@ const MultiCarGameScreen: React.FC = () => {
   const [ready, setReady] = useState(false);
   const [inputMode, setInputMode] = useState<'touchZones' | 'joystick'>('touchZones');
   const [raceState, setRaceState] = useState<any>(null);
+  const [track] = useState(createRaceTrack());
 
   // Initialize race on mount
   useEffect(() => {
@@ -42,6 +45,15 @@ const MultiCarGameScreen: React.FC = () => {
         
         // Set up race manager with loop manager
         loopManager.setGameIntegration(raceManager);
+        
+        // Start the race automatically
+        console.log('🏁 MultiCarGameScreen: About to start race...');
+        raceManager.startRace();
+        console.log('🏁 MultiCarGameScreen: Race start called');
+        
+        // Check if race is actually started
+        const raceState = raceManager.getState();
+        console.log('🏁 MultiCarGameScreen: Race state after start:', raceState.raceStarted);
         
         if (mounted) {
           setReady(true);
@@ -100,21 +112,6 @@ const MultiCarGameScreen: React.FC = () => {
     setInputMode(mode);
   }, []);
 
-  // Race control functions
-  const startRace = () => {
-    const raceManager = raceManagerRef.current;
-    raceManager.startRace();
-  };
-
-  const stopRace = () => {
-    const raceManager = raceManagerRef.current;
-    raceManager.stopRace();
-  };
-
-  const resetRace = () => {
-    const raceManager = raceManagerRef.current;
-    raceManager.resetRace();
-  };
 
   // Helper function to convert world coordinates to screen coordinates
   const worldToScreen = (worldX: number, worldY: number) => {
@@ -136,41 +133,14 @@ const MultiCarGameScreen: React.FC = () => {
       <View style={styles.gameView}>
         {/* Track Background */}
         <View style={styles.trackBackground}>
-          {/* Large grass background that extends beyond screen */}
-          <View style={styles.grassBackground} />
-          
-          {/* Track tiles - generate more tiles for scrolling */}
-          {Array.from({ length: 100 }, (_, i) => {
-            const tileX = (i % 10) * 80;
-            const tileY = Math.floor(i / 10) * 80;
-            const screenPos = worldToScreen(tileX, tileY);
-            
-            // Only render tiles that are visible on screen
-            if (screenPos.x > -100 && screenPos.x < screenWidth + 100 && 
-                screenPos.y > -100 && screenPos.y < screenHeight + 100) {
-              return (
-                <View
-                  key={i}
-                  style={[
-                    styles.trackTile,
-                    {
-                      left: screenPos.x - 40,
-                      top: screenPos.y - 40,
-                    },
-                  ]}
-                />
-              );
-            }
-            return null;
-          })}
-
-          {/* Track boundaries - positioned relative to camera */}
-          <View style={[styles.trackBoundary, {
-            left: worldToScreen(50, 50).x - 200,
-            top: worldToScreen(50, 50).y - 200,
-            width: 400,
-            height: 400,
-          }]} />
+          {/* Render the race track */}
+          <TrackRenderer
+            track={track}
+            cameraX={cameraRef.current.getState().x}
+            cameraY={cameraRef.current.getState().y}
+            screenWidth={screenWidth}
+            screenHeight={screenHeight}
+          />
 
           {/* Player Car */}
           {raceState && raceState.playerPosition && (
@@ -235,24 +205,8 @@ const MultiCarGameScreen: React.FC = () => {
           <View style={styles.hudHeader}>
             <Text style={styles.hudTitle}>Race Game</Text>
             <Text style={styles.hudSubtitle}>
-              Race: {raceState?.raceStarted ? 'ON' : 'OFF'} | Time: {raceState?.raceTime?.toFixed(1) || '0.0'}s
+              Time: {raceState?.raceTime?.toFixed(1) || '0.0'}s
             </Text>
-          </View>
-
-          {/* Race Controls */}
-          <View style={styles.hudControls}>
-            {!raceState?.raceStarted ? (
-              <TouchableOpacity style={styles.startButton} onPress={startRace}>
-                <Text style={styles.buttonText}>🏁 Start Race</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.stopButton} onPress={stopRace}>
-                <Text style={styles.buttonText}>🛑 Stop Race</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity style={styles.resetButton} onPress={resetRace}>
-              <Text style={styles.buttonText}>🔄 Reset</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -277,20 +231,6 @@ const MultiCarGameScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Debug Info */}
-      <View style={styles.debugContainer}>
-        <Text style={styles.sectionTitle}>Debug Info:</Text>
-        <Text style={styles.debugText}>
-          Player: ({raceState?.playerPosition?.x?.toFixed(1) || '0'}, {raceState?.playerPosition?.y?.toFixed(1) || '0'}) 
-          Speed: {raceState?.playerCar?.getState?.()?.speed?.toFixed(1) || '0.0'} m/s
-        </Text>
-        {raceState?.aiPositions?.map((pos: any, index: number) => (
-          <Text key={index} style={styles.debugText}>
-            AI {index + 1}: ({pos.x?.toFixed(1) || '0'}, {pos.y?.toFixed(1) || '0'}) 
-            Speed: {raceState.aiCars?.[index]?.getState?.()?.speed?.toFixed(1) || '0.0'} m/s
-          </Text>
-        ))}
-      </View>
     </View>
   );
 };
