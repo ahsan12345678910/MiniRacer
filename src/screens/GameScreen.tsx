@@ -7,7 +7,7 @@ import {
   Dimensions,
   TouchableOpacity,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getSimpleGameLoopManager } from '../game/loop/SimpleGameLoopManager';
 import { getSimpleRaceManager } from '../game/SimpleRaceManager';
 import { TouchZones, VirtualJoystick } from '../game/input/InputManager';
@@ -16,6 +16,8 @@ import { createRaceTrack } from '../game/track/TrackDesign';
 import { TrackRenderer } from '../game/track/TrackRenderer';
 import { createSimpleRealisticTrack } from '../game/track/SimpleRealisticTrack';
 import { SimpleRealisticTrackRenderer } from '../game/track/SimpleRealisticTrackRenderer';
+import { createProfessionalTrack } from '../game/track/ProfessionalTrackDesign';
+import { ProfessionalTrackRenderer } from '../game/track/ProfessionalTrackRenderer';
 import { LapTimeHUD } from '../ui/LapTimeHUD';
 import { useLapTimeHUD } from '../hooks/useLapTimeHUD';
 
@@ -32,6 +34,7 @@ const formatTime = (timeMs: number): string => {
 };
 
 const GameScreen: React.FC = () => {
+  const navigation = useNavigation();
   // Refs for game state
   const raceManagerRef = useRef(getSimpleRaceManager());
   const loopManagerRef = useRef(getSimpleGameLoopManager());
@@ -48,9 +51,42 @@ const GameScreen: React.FC = () => {
   const [raceState, setRaceState] = useState<any>(null);
   const [track] = useState(createRaceTrack());
   const [realisticTrack] = useState(createSimpleRealisticTrack());
+  const [professionalTrack] = useState(createProfessionalTrack());
+  const [isPaused, setIsPaused] = useState(false);
   
   // HUD hook
   const { hudData, isActive, startHUDUpdates, stopHUDUpdates, resetHUD } = useLapTimeHUD(50); // 20 FPS updates
+
+  // Pause button handler
+  const handlePauseToggle = () => {
+    const raceManager = raceManagerRef.current;
+    if (raceManager) {
+      raceManager.togglePause();
+      setIsPaused(raceManager.isRacePaused());
+      console.log('⏸️ GameScreen: Pause toggled, isPaused:', raceManager.isRacePaused());
+    }
+  };
+
+  // Menu button handler
+  const handleMenuPress = () => {
+    console.log('🏠 GameScreen: Returning to main menu');
+    
+    // Stop HUD updates
+    stopHUDUpdates();
+    
+    // Stop the game loop
+    if (loopManagerRef.current) {
+      loopManagerRef.current.stop();
+    }
+    
+    // Reset the race
+    if (raceManagerRef.current) {
+      raceManagerRef.current.resetRace();
+    }
+    
+    // Navigate back to main menu
+    navigation.navigate('Menu' as never);
+  };
 
   // Initialize race on mount
   useEffect(() => {
@@ -99,6 +135,9 @@ const GameScreen: React.FC = () => {
         cameraRef.current.setTarget(currentState.playerPosition.x, currentState.playerPosition.y);
         cameraRef.current.update(16); // ~60fps
       }
+      
+      // Sync pause state
+      setIsPaused(currentState.isPaused);
       
       setRaceState(currentState);
     };
@@ -152,8 +191,8 @@ const GameScreen: React.FC = () => {
         {/* Realistic Track Background */}
         <View style={styles.trackBackground}>
           {/* Render the realistic race track */}
-          <SimpleRealisticTrackRenderer
-            track={realisticTrack}
+          <ProfessionalTrackRenderer
+            track={professionalTrack}
             cameraX={cameraRef.current.getState().x}
             cameraY={cameraRef.current.getState().y}
             screenWidth={screenWidth}
@@ -319,6 +358,30 @@ const GameScreen: React.FC = () => {
           speed={hudData.speed}
           raceTime={hudData.raceTime}
         />
+
+        {/* Pause Button */}
+        <View style={styles.pauseButtonContainer}>
+          <TouchableOpacity
+            style={[styles.pauseButton, isPaused && styles.pauseButtonActive]}
+            onPress={handlePauseToggle}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.pauseButtonText}>
+              {isPaused ? '▶️' : '⏸️'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Menu Button */}
+        <View style={styles.menuButtonContainer}>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={handleMenuPress}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.menuButtonText}>🏠</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Countdown Display */}
         {raceState?.countdownActive && (
@@ -490,6 +553,64 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
+  },
+  // Pause Button Styles
+  pauseButtonContainer: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 1000,
+  },
+  pauseButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  pauseButtonActive: {
+    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+    borderColor: '#FFD700',
+  },
+  pauseButtonText: {
+    fontSize: 24,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  // Menu Button Styles
+  menuButtonContainer: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 1000,
+  },
+  menuButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  menuButtonText: {
+    fontSize: 24,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
   // HUD Styles
   gameHUD: {

@@ -26,6 +26,9 @@ export interface SimpleRaceState {
   hasCrossedStartLine: boolean;
   currentLapStartTime: number;
   lastLapStartTime: number;
+  // Pause system
+  isPaused: boolean;
+  pauseTime: number;
 }
 
 export class SimpleRaceManager {
@@ -34,14 +37,14 @@ export class SimpleRaceManager {
   private track = createRaceTrack();
 
   constructor() {
-    // Create player car at start line
-    const playerCar = new SimpleCar({ x: 250, y: 100 }, 0);
+    // Create player car at start line (new professional track)
+    const playerCar = new SimpleCar({ x: 200, y: 700 }, 0);
     
     // Create AI cars at different positions on the track
     const aiCars = [
-      new SimpleCar({ x: 280, y: 100 }, 0),
-      new SimpleCar({ x: 320, y: 100 }, 0),
-      new SimpleCar({ x: 350, y: 100 }, 0),
+      new SimpleCar({ x: 230, y: 700 }, 0),
+      new SimpleCar({ x: 260, y: 700 }, 0),
+      new SimpleCar({ x: 290, y: 700 }, 0),
     ];
 
     this.state = {
@@ -49,11 +52,11 @@ export class SimpleRaceManager {
       aiCars,
       raceStarted: false, // Don't start race immediately
       raceTime: 0,
-      playerPosition: { x: 250, y: 100 },
+      playerPosition: { x: 200, y: 700 },
       aiPositions: [
-        { x: 280, y: 100 },
-        { x: 320, y: 100 },
-        { x: 350, y: 100 },
+        { x: 230, y: 700 },
+        { x: 260, y: 700 },
+        { x: 290, y: 700 },
       ],
       countdown: 3, // Start countdown at 3
       countdownActive: true, // Countdown is active
@@ -66,6 +69,9 @@ export class SimpleRaceManager {
       hasCrossedStartLine: false,
       currentLapStartTime: 0,
       lastLapStartTime: 0,
+      // Pause system initialization
+      isPaused: false,
+      pauseTime: 0,
     };
 
     console.log('🏁 SimpleRaceManager: Created with', aiCars.length, 'AI cars');
@@ -113,20 +119,64 @@ export class SimpleRaceManager {
     this.state.currentLapStartTime = 0;
     this.state.lastLapStartTime = 0;
     
-    // Reset player car to start line
-    this.state.playerCar.resetToStart({ x: 250, y: 100 }, 0);
+    // Reset pause system
+    this.state.isPaused = false;
+    this.state.pauseTime = 0;
+    
+    // Reset player car to start line (new professional track)
+    this.state.playerCar.resetToStart({ x: 200, y: 700 }, 0);
     
     // Reset AI cars to different positions on track
     this.state.aiCars.forEach((car, index) => {
       const positions = [
-        { x: 280, y: 100 },
-        { x: 320, y: 100 },
-        { x: 350, y: 100 },
+        { x: 230, y: 700 },
+        { x: 260, y: 700 },
+        { x: 290, y: 700 },
       ];
       car.resetToStart(positions[index], 0);
     });
 
     console.log('🏁 SimpleRaceManager: Race reset! Countdown restarted at 3, lap system reset');
+  }
+
+  /**
+   * Pause the race
+   */
+  pauseRace(): void {
+    if (!this.state.isPaused) {
+      this.state.isPaused = true;
+      this.state.pauseTime = Date.now();
+      console.log('⏸️ SimpleRaceManager: Race paused');
+    }
+  }
+
+  /**
+   * Resume the race
+   */
+  resumeRace(): void {
+    if (this.state.isPaused) {
+      this.state.isPaused = false;
+      const pauseDuration = Date.now() - this.state.pauseTime;
+      console.log('▶️ SimpleRaceManager: Race resumed after', pauseDuration, 'ms pause');
+    }
+  }
+
+  /**
+   * Toggle pause state
+   */
+  togglePause(): void {
+    if (this.state.isPaused) {
+      this.resumeRace();
+    } else {
+      this.pauseRace();
+    }
+  }
+
+  /**
+   * Check if race is paused
+   */
+  isRacePaused(): boolean {
+    return this.state.isPaused;
   }
 
   /**
@@ -269,6 +319,12 @@ export class SimpleRaceManager {
    * Update the race (required by game loop)
    */
   update(deltaTime: number): void {
+    // Don't update if race is paused
+    if (this.state.isPaused) {
+      console.log('⏸️ SimpleRaceManager: Race is paused, skipping update');
+      return;
+    }
+
     const currentTime = Date.now();
     const shouldLog = currentTime - this.lastLogTime > 1000; // Log every 1 second for more frequent updates
 
@@ -363,27 +419,45 @@ export class SimpleRaceManager {
   private generateAIInputs(aiCar: SimpleCar, index: number): SimpleCarInputs {
     const carState = aiCar.getState();
     
-    // Define a proper racing line that follows the actual track layout
+    // Define a proper racing line that follows the professional track layout
     const racingLine = [
-      { x: 250, y: 100 }, // Start line
-      { x: 350, y: 100 }, // Main straight
-      { x: 450, y: 100 }, // Main straight end
-      { x: 500, y: 100 }, // Turn 1 approach
-      { x: 520, y: 120 }, // Turn 1
-      { x: 520, y: 140 }, // Turn 1 exit
-      { x: 600, y: 140 }, // Back straight
-      { x: 640, y: 160 }, // Turn 2
-      { x: 640, y: 180 }, // Turn 2 exit
-      { x: 600, y: 200 }, // Turn 3
-      { x: 580, y: 200 }, // Turn 3 exit
-      { x: 540, y: 200 }, // Turn 4
-      { x: 520, y: 180 }, // Turn 4 exit
-      { x: 500, y: 160 }, // Turn 5
-      { x: 480, y: 140 }, // Turn 5 exit
-      { x: 420, y: 140 }, // Turn 6
-      { x: 400, y: 120 }, // Turn 6 exit
-      { x: 350, y: 100 }, // Turn 7
-      { x: 300, y: 100 }, // Back to start
+      { x: 200, y: 700 }, // Start line
+      { x: 300, y: 700 }, // Main straight
+      { x: 400, y: 700 }, // Main straight end
+      { x: 450, y: 700 }, // Turn 1 approach
+      { x: 470, y: 680 }, // Turn 1
+      { x: 470, y: 620 }, // Turn 1 exit
+      { x: 520, y: 620 }, // Upper right section
+      { x: 570, y: 620 }, // Turn 2 approach
+      { x: 550, y: 580 }, // Turn 2
+      { x: 550, y: 520 }, // Turn 2 exit
+      { x: 500, y: 520 }, // Upper section
+      { x: 450, y: 520 }, // Turn 3 approach
+      { x: 430, y: 500 }, // Turn 3
+      { x: 430, y: 440 }, // Turn 3 exit
+      { x: 380, y: 440 }, // Upper left section
+      { x: 330, y: 440 }, // Turn 4 approach
+      { x: 310, y: 420 }, // Turn 4
+      { x: 310, y: 360 }, // Turn 4 exit
+      { x: 260, y: 360 }, // Left section
+      { x: 210, y: 360 }, // Turn 5 approach
+      { x: 190, y: 340 }, // Turn 5
+      { x: 190, y: 280 }, // Turn 5 exit
+      { x: 240, y: 280 }, // Middle section
+      { x: 290, y: 280 }, // Turn 6 approach
+      { x: 310, y: 260 }, // Turn 6
+      { x: 310, y: 200 }, // Turn 6 exit
+      { x: 360, y: 200 }, // Lower left section
+      { x: 410, y: 200 }, // Turn 7 approach
+      { x: 430, y: 180 }, // Turn 7
+      { x: 430, y: 120 }, // Turn 7 exit
+      { x: 380, y: 120 }, // Lower section
+      { x: 330, y: 120 }, // Turn 8 approach
+      { x: 310, y: 100 }, // Turn 8
+      { x: 310, y: 40 }, // Turn 8 exit
+      { x: 360, y: 40 }, // Final section
+      { x: 410, y: 40 }, // Back to start
+      { x: 200, y: 700 }, // Complete lap
     ];
     
     // Find the closest waypoint to the car
