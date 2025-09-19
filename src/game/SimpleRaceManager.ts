@@ -17,6 +17,15 @@ export interface SimpleRaceState {
   aiPositions: Array<{ x: number; y: number }>;
   countdown: number; // 3, 2, 1, 0 (GO)
   countdownActive: boolean;
+  // Lap system
+  currentLap: number;
+  totalLaps: number;
+  lapTimes: Array<{ lapNumber: number; time: number; timestamp: number }>;
+  bestLapTime: number;
+  lastStartLineCrossing: number;
+  hasCrossedStartLine: boolean;
+  currentLapStartTime: number;
+  lastLapStartTime: number;
 }
 
 export class SimpleRaceManager {
@@ -48,6 +57,15 @@ export class SimpleRaceManager {
       ],
       countdown: 3, // Start countdown at 3
       countdownActive: true, // Countdown is active
+      // Lap system initialization
+      currentLap: 0,
+      totalLaps: 3,
+      lapTimes: [],
+      bestLapTime: 0,
+      lastStartLineCrossing: 0,
+      hasCrossedStartLine: false,
+      currentLapStartTime: 0,
+      lastLapStartTime: 0,
     };
 
     console.log('🏁 SimpleRaceManager: Created with', aiCars.length, 'AI cars');
@@ -86,6 +104,15 @@ export class SimpleRaceManager {
     this.state.countdown = 3;
     this.state.countdownActive = true;
     
+    // Reset lap system
+    this.state.currentLap = 0;
+    this.state.lapTimes = [];
+    this.state.bestLapTime = 0;
+    this.state.lastStartLineCrossing = 0;
+    this.state.hasCrossedStartLine = false;
+    this.state.currentLapStartTime = 0;
+    this.state.lastLapStartTime = 0;
+    
     // Reset player car to start line
     this.state.playerCar.resetToStart({ x: 250, y: 100 }, 0);
     
@@ -99,7 +126,143 @@ export class SimpleRaceManager {
       car.resetToStart(positions[index], 0);
     });
 
-    console.log('🏁 SimpleRaceManager: Race reset! Countdown restarted at 3');
+    console.log('🏁 SimpleRaceManager: Race reset! Countdown restarted at 3, lap system reset');
+  }
+
+  /**
+   * Check if car is crossing the start line
+   */
+  private isCarCrossingStartLine(car: SimpleCar): boolean {
+    const carState = car.getState();
+    const { x, y } = carState;
+    
+    // Start line coordinates from track design
+    const startLine = this.track.startLine;
+    const startLineX1 = startLine.x1;
+    const startLineX2 = startLine.x2;
+    const startLineY = startLine.y1;
+    
+    // Create a larger detection zone for more reliable detection
+    const tolerance = 50; // Increased from 20 to 50 for better detection
+    const isInStartLineZone = 
+      x >= Math.min(startLineX1, startLineX2) - tolerance &&
+      x <= Math.max(startLineX1, startLineX2) + tolerance &&
+      y >= startLineY - tolerance &&
+      y <= startLineY + tolerance;
+    
+    if (isInStartLineZone) {
+      console.log('🏁 SimpleRaceManager: Car in start line zone at', x.toFixed(1), y.toFixed(1), 'start line:', startLineX1, '-', startLineX2, 'at Y:', startLineY);
+    }
+    
+    return isInStartLineZone;
+  }
+
+  /**
+   * Check if car is moving forward across start line
+   */
+  private isMovingForward(car: SimpleCar): boolean {
+    const carState = car.getState();
+    const { vx, vy } = carState;
+    
+    // Calculate speed
+    const speed = Math.sqrt(vx * vx + vy * vy);
+    
+    // Car must be moving at reasonable speed (reduced from 2.0 to 1.0 for easier detection)
+    if (speed < 1.0) {
+      console.log('🏁 SimpleRaceManager: Car too slow for lap detection, speed:', speed.toFixed(2));
+      return false;
+    }
+    
+    // More flexible forward detection - check if car is moving in positive X direction
+    // This works for our track design where start line is horizontal
+    const isMovingForward = vx > 0.3; // Reduced threshold from 0.5 to 0.3
+    
+    if (isMovingForward) {
+      console.log('🏁 SimpleRaceManager: Car moving forward, vx:', vx.toFixed(2), 'vy:', vy.toFixed(2), 'speed:', speed.toFixed(2));
+    } else {
+      console.log('🏁 SimpleRaceManager: Car not moving forward, vx:', vx.toFixed(2), 'vy:', vy.toFixed(2), 'speed:', speed.toFixed(2));
+    }
+    
+    return isMovingForward;
+  }
+
+  /**
+   * Handle start line crossing
+   */
+  private handleStartLineCrossing(): void {
+    const currentTime = Date.now();
+    
+    // Cooldown to prevent multiple rapid crossings (increased to 3 seconds)
+    const cooldown = 3000; // 3 seconds
+    if (currentTime - this.state.lastStartLineCrossing < cooldown) {
+      console.log('🏁 SimpleRaceManager: Start line crossing on cooldown, time since last:', (currentTime - this.state.lastStartLineCrossing), 'ms');
+      return;
+    }
+    
+    console.log('🏁 SimpleRaceManager: Start line crossing detected!');
+    this.state.lastStartLineCrossing = currentTime;
+    
+    // Check if this is the first crossing (race start)
+    if (!this.state.hasCrossedStartLine) {
+      this.state.hasCrossedStartLine = true;
+      this.state.currentLap = 1;
+      this.state.currentLapStartTime = currentTime;
+      this.state.lastLapStartTime = currentTime;
+      console.log('🏁 SimpleRaceManager: First start line crossing - Lap 1 started!');
+      return;
+    }
+    
+    // Complete current lap
+    if (this.state.currentLap > 0 && this.state.currentLapStartTime > 0) {
+      const lapTime = currentTime - this.state.currentLapStartTime;
+      
+      // Minimum lap time validation (5 seconds minimum)
+      const minLapTime = 5000; // 5 seconds
+      if (lapTime < minLapTime) {
+        console.log('🏁 SimpleRaceManager: Lap too short, ignoring. Time:', this.formatTime(lapTime), 'minimum:', this.formatTime(minLapTime));
+        return;
+      }
+      
+      const lapData = {
+        lapNumber: this.state.currentLap,
+        time: lapTime,
+        timestamp: currentTime
+      };
+      
+      this.state.lapTimes.push(lapData);
+      
+      // Check for best lap
+      if (this.state.bestLapTime === 0 || lapTime < this.state.bestLapTime) {
+        this.state.bestLapTime = lapTime;
+        console.log('🏁 SimpleRaceManager: New best lap time:', this.formatTime(lapTime));
+      }
+      
+      console.log('🏁 SimpleRaceManager: Lap', this.state.currentLap, 'completed in', this.formatTime(lapTime));
+      
+      // Move to next lap
+      this.state.currentLap++;
+      this.state.currentLapStartTime = currentTime;
+      
+      // Check if race is finished
+      if (this.state.currentLap > this.state.totalLaps) {
+        console.log('🏁 SimpleRaceManager: Race finished! Total laps:', this.state.totalLaps);
+        this.state.raceStarted = false; // Stop the race
+      } else {
+        console.log('🏁 SimpleRaceManager: Starting lap', this.state.currentLap, 'of', this.state.totalLaps);
+      }
+    }
+  }
+
+  /**
+   * Format time in milliseconds to MM:SS.mmm format
+   */
+  private formatTime(timeMs: number): string {
+    const totalSeconds = Math.floor(timeMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const milliseconds = Math.floor((timeMs % 1000) / 10);
+
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
   }
 
   /**
@@ -163,9 +326,15 @@ export class SimpleRaceManager {
     const playerState = this.state.playerCar.getState();
     this.state.playerPosition = { x: playerState.x, y: playerState.y };
 
+    // Check for start line crossing
+    if (this.isCarCrossingStartLine(this.state.playerCar) && this.isMovingForward(this.state.playerCar)) {
+      this.handleStartLineCrossing();
+    }
+
     // Log player car state after update
     console.log('🏁 SimpleRaceManager: Player car state AFTER update:', playerState);
     console.log('🏁 SimpleRaceManager: Player position updated to:', this.state.playerPosition);
+    console.log('🏁 SimpleRaceManager: Lap info - current:', this.state.currentLap, 'total:', this.state.totalLaps, 'best time:', this.state.bestLapTime > 0 ? this.formatTime(this.state.bestLapTime) : 'N/A');
 
     // Update AI cars with simple AI behavior
     this.state.aiCars.forEach((aiCar, index) => {
@@ -336,6 +505,55 @@ export class SimpleRaceManager {
    */
   isCountdownActive(): boolean {
     return this.state.countdownActive;
+  }
+
+  /**
+   * Get lap information
+   */
+  getLapInfo(): {
+    currentLap: number;
+    totalLaps: number;
+    lapTimes: Array<{ lapNumber: number; time: number; timestamp: number }>;
+    bestLapTime: number;
+    isRaceFinished: boolean;
+  } {
+    return {
+      currentLap: this.state.currentLap,
+      totalLaps: this.state.totalLaps,
+      lapTimes: this.state.lapTimes,
+      bestLapTime: this.state.bestLapTime,
+      isRaceFinished: this.state.currentLap > this.state.totalLaps
+    };
+  }
+
+  /**
+   * Get formatted best lap time
+   */
+  getFormattedBestLapTime(): string {
+    return this.state.bestLapTime > 0 ? this.formatTime(this.state.bestLapTime) : 'N/A';
+  }
+
+  /**
+   * Get race progress percentage
+   */
+  getRaceProgress(): number {
+    if (this.state.totalLaps === 0) return 0;
+    return Math.min((this.state.currentLap / this.state.totalLaps) * 100, 100);
+  }
+
+  /**
+   * Get current lap time (time elapsed since current lap started)
+   */
+  getCurrentLapTime(): number {
+    if (this.state.currentLapStartTime === 0) return 0;
+    return Date.now() - this.state.currentLapStartTime;
+  }
+
+  /**
+   * Get formatted current lap time
+   */
+  getFormattedCurrentLapTime(): string {
+    return this.formatTime(this.getCurrentLapTime());
   }
 }
 

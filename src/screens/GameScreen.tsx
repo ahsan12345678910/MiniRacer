@@ -17,6 +17,16 @@ import { TrackRenderer } from '../game/track/TrackRenderer';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Helper function to format time
+const formatTime = (timeMs: number): string => {
+  const totalSeconds = Math.floor(timeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const milliseconds = Math.floor((timeMs % 1000) / 10);
+
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+};
+
 const GameScreen: React.FC = () => {
   // Refs for game state
   const raceManagerRef = useRef(getSimpleRaceManager());
@@ -202,6 +212,19 @@ const GameScreen: React.FC = () => {
             <Text style={styles.hudSubtitle}>
               Time: {raceState?.raceTime?.toFixed(1) || '0.0'}s
             </Text>
+            <Text style={styles.lapInfo}>
+              Lap: {raceState?.currentLap || 0}/{raceState?.totalLaps || 3}
+            </Text>
+            {raceState?.currentLap > 0 && (
+              <Text style={styles.currentLapTime}>
+                Current: {formatTime(raceState.currentLapStartTime > 0 ? Date.now() - raceState.currentLapStartTime : 0)}
+              </Text>
+            )}
+            {raceState?.bestLapTime > 0 && (
+              <Text style={styles.bestLapInfo}>
+                Best: {formatTime(raceState.bestLapTime)}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -391,6 +414,27 @@ const styles = StyleSheet.create({
   hudSubtitle: {
     fontSize: 12,
     color: '#BDC3C7',
+  },
+  lapInfo: {
+    color: '#00FF00',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 4,
+    fontFamily: 'monospace',
+  },
+  bestLapInfo: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 2,
+    fontFamily: 'monospace',
+  },
+  currentLapTime: {
+    color: '#00FFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+    fontFamily: 'monospace',
   },
   hudControls: {
     flexDirection: 'row',
