@@ -349,6 +349,7 @@ export class SimpleRaceManager {
       this.state.aiPositions[index] = { x: aiState.x, y: aiState.y };
       
       console.log(`🏁 SimpleRaceManager: AI car ${index} state AFTER update:`, aiState);
+      console.log(`🏁 SimpleRaceManager: AI car ${index} position updated to:`, this.state.aiPositions[index]);
     });
 
     // ALWAYS log final positions
@@ -554,6 +555,44 @@ export class SimpleRaceManager {
    */
   getFormattedCurrentLapTime(): string {
     return this.formatTime(this.getCurrentLapTime());
+  }
+
+  /**
+   * Get comprehensive lap information for HUD
+   */
+  getLapHUDData(): {
+    currentLap: number;
+    totalLaps: number;
+    currentLapTime: number;
+    currentLapTimeFormatted: string;
+    bestLapTime: number;
+    bestLapTimeFormatted: string;
+    lastLapTime: number;
+    lastLapTimeFormatted: string;
+    isNewBestLap: boolean;
+    raceProgress: number;
+  } {
+    const currentLapTime = this.getCurrentLapTime();
+    const lastLapTime = this.state.lapTimes.length > 0 
+      ? this.state.lapTimes[this.state.lapTimes.length - 1].time 
+      : 0;
+    
+    const isNewBestLap = this.state.bestLapTime > 0 && 
+      currentLapTime > 0 && 
+      currentLapTime < this.state.bestLapTime;
+
+    return {
+      currentLap: this.state.currentLap,
+      totalLaps: this.state.totalLaps,
+      currentLapTime,
+      currentLapTimeFormatted: this.formatTime(currentLapTime),
+      bestLapTime: this.state.bestLapTime,
+      bestLapTimeFormatted: this.state.bestLapTime > 0 ? this.formatTime(this.state.bestLapTime) : '--:--.---',
+      lastLapTime,
+      lastLapTimeFormatted: lastLapTime > 0 ? this.formatTime(lastLapTime) : '--:--.---',
+      isNewBestLap,
+      raceProgress: this.getRaceProgress()
+    };
   }
 }
 

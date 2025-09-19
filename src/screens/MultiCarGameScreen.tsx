@@ -14,6 +14,10 @@ import { TouchZones, VirtualJoystick } from '../game/input/InputManager';
 import { createCamera, DEFAULT_CAMERA_SETTINGS } from '../game/camera/Camera';
 import { createRaceTrack } from '../game/track/TrackDesign';
 import { TrackRenderer } from '../game/track/TrackRenderer';
+import { createSimpleRealisticTrack } from '../game/track/SimpleRealisticTrack';
+import { SimpleRealisticTrackRenderer } from '../game/track/SimpleRealisticTrackRenderer';
+import { LapTimeHUD } from '../ui/LapTimeHUD';
+import { useLapTimeHUD } from '../hooks/useLapTimeHUD';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -43,6 +47,10 @@ const MultiCarGameScreen: React.FC = () => {
   const [inputMode, setInputMode] = useState<'touchZones' | 'joystick'>('touchZones');
   const [raceState, setRaceState] = useState<any>(null);
   const [track] = useState(createRaceTrack());
+  const [realisticTrack] = useState(createSimpleRealisticTrack());
+  
+  // HUD hook
+  const { hudData, isActive, startHUDUpdates, stopHUDUpdates, resetHUD } = useLapTimeHUD(50); // 20 FPS updates
 
   // Initialize race on mount
   useEffect(() => {
@@ -65,6 +73,10 @@ const MultiCarGameScreen: React.FC = () => {
         const raceState = raceManager.getState();
         console.log('🏁 MultiCarGameScreen: Race state after start:', raceState.raceStarted);
         
+        // Start HUD updates
+        startHUDUpdates();
+        console.log('🏁 MultiCarGameScreen: HUD updates started!');
+        
         if (mounted) {
           setReady(true);
         }
@@ -75,6 +87,7 @@ const MultiCarGameScreen: React.FC = () => {
 
     return () => {
       mounted = false;
+      stopHUDUpdates();
     };
   }, []);
 
@@ -91,6 +104,14 @@ const MultiCarGameScreen: React.FC = () => {
         cameraRef.current.setTarget(currentState.playerPosition.x, currentState.playerPosition.y);
         cameraRef.current.update(16); // ~60fps
       }
+      
+      // Debug AI cars
+      console.log('🏁 MultiCarGameScreen: Race state update:', {
+        playerPosition: currentState.playerPosition,
+        aiPositions: currentState.aiPositions,
+        aiCars: currentState.aiCars?.length || 0,
+        raceStarted: currentState.raceStarted
+      });
       
       setRaceState(currentState);
     };
@@ -141,11 +162,11 @@ const MultiCarGameScreen: React.FC = () => {
     <View style={styles.container}>
       {/* Game View */}
       <View style={styles.gameView}>
-        {/* Track Background */}
+        {/* Realistic Track Background */}
         <View style={styles.trackBackground}>
-          {/* Render the race track */}
-          <TrackRenderer
-            track={track}
+          {/* Render the realistic race track */}
+          <SimpleRealisticTrackRenderer
+            track={realisticTrack}
             cameraX={cameraRef.current.getState().x}
             cameraY={cameraRef.current.getState().y}
             screenWidth={screenWidth}
@@ -183,11 +204,20 @@ const MultiCarGameScreen: React.FC = () => {
             const carColor = carColors[index] || '#FF44FF';
             const screenPos = worldToScreen(pos.x, pos.y);
             
+            // Debug AI car rendering
+            console.log(`🚗 AI Car ${index}:`, {
+              position: pos,
+              screenPos: screenPos,
+              aiCar: aiCar,
+              carColor: carColor
+            });
+            
             return (
               <View
-                key={index}
+                key={`ai-car-${index}`}
                 style={[
                   styles.carBody,
+                  styles.aiCar, // Add AI car specific styling
                   {
                     backgroundColor: carColor,
                     borderColor: carColor,
@@ -208,30 +238,100 @@ const MultiCarGameScreen: React.FC = () => {
               </View>
             );
           })}
+          
+          {/* Fallback AI Cars - Always show 3 AI cars even if race state is not updated */}
+          {(!raceState?.aiPositions || raceState.aiPositions.length === 0) && (
+            <>
+              {/* AI Car 1 - Blue */}
+              <View
+                key="fallback-ai-car-0"
+                style={[
+                  styles.carBody,
+                  styles.aiCar,
+                  {
+                    backgroundColor: '#4444FF',
+                    borderColor: '#4444FF',
+                    left: worldToScreen(280, 100).x - 20,
+                    top: worldToScreen(280, 100).y - 10,
+                  },
+                ]}
+              >
+                <View style={styles.carWindows} />
+                <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
+                <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
+                <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
+                <View style={[styles.carWheel, styles.carWheelFrontRight]} />
+                <View style={[styles.carWheel, styles.carWheelRearLeft]} />
+                <View style={[styles.carWheel, styles.carWheelRearRight]} />
+                <View style={styles.carSpoiler} />
+              </View>
+              
+              {/* AI Car 2 - Green */}
+              <View
+                key="fallback-ai-car-1"
+                style={[
+                  styles.carBody,
+                  styles.aiCar,
+                  {
+                    backgroundColor: '#44FF44',
+                    borderColor: '#44FF44',
+                    left: worldToScreen(320, 100).x - 20,
+                    top: worldToScreen(320, 100).y - 10,
+                  },
+                ]}
+              >
+                <View style={styles.carWindows} />
+                <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
+                <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
+                <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
+                <View style={[styles.carWheel, styles.carWheelFrontRight]} />
+                <View style={[styles.carWheel, styles.carWheelRearLeft]} />
+                <View style={[styles.carWheel, styles.carWheelRearRight]} />
+                <View style={styles.carSpoiler} />
+              </View>
+              
+              {/* AI Car 3 - Yellow */}
+              <View
+                key="fallback-ai-car-2"
+                style={[
+                  styles.carBody,
+                  styles.aiCar,
+                  {
+                    backgroundColor: '#FFFF44',
+                    borderColor: '#FFFF44',
+                    left: worldToScreen(350, 100).x - 20,
+                    top: worldToScreen(350, 100).y - 10,
+                  },
+                ]}
+              >
+                <View style={styles.carWindows} />
+                <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
+                <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
+                <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
+                <View style={[styles.carWheel, styles.carWheelFrontRight]} />
+                <View style={[styles.carWheel, styles.carWheelRearLeft]} />
+                <View style={[styles.carWheel, styles.carWheelRearRight]} />
+                <View style={styles.carSpoiler} />
+              </View>
+            </>
+          )}
         </View>
 
-        {/* Game HUD Overlay */}
-        <View style={styles.gameHUD}>
-          <View style={styles.hudHeader}>
-            <Text style={styles.hudTitle}>Race Game</Text>
-            <Text style={styles.hudSubtitle}>
-              Time: {raceState?.raceTime?.toFixed(1) || '0.0'}s
-            </Text>
-            <Text style={styles.lapInfo}>
-              Lap: {raceState?.currentLap || 0}/{raceState?.totalLaps || 3}
-            </Text>
-            {raceState?.currentLap > 0 && (
-              <Text style={styles.currentLapTime}>
-                Current: {formatTime(raceState.currentLapStartTime > 0 ? Date.now() - raceState.currentLapStartTime : 0)}
-              </Text>
-            )}
-            {raceState?.bestLapTime > 0 && (
-              <Text style={styles.bestLapInfo}>
-                Best: {formatTime(raceState.bestLapTime)}
-              </Text>
-            )}
-          </View>
-        </View>
+        {/* Enhanced Lap Time HUD */}
+        <LapTimeHUD
+          currentLap={hudData.currentLap}
+          totalLaps={hudData.totalLaps}
+          currentLapTime={hudData.currentLapTime}
+          currentLapTimeFormatted={hudData.currentLapTimeFormatted}
+          bestLapTime={hudData.bestLapTime}
+          bestLapTimeFormatted={hudData.bestLapTimeFormatted}
+          lastLapTime={hudData.lastLapTime}
+          lastLapTimeFormatted={hudData.lastLapTimeFormatted}
+          isNewBestLap={hudData.isNewBestLap}
+          raceProgress={hudData.raceProgress}
+          speed={hudData.speed}
+          raceTime={hudData.raceTime}
+        />
 
         {/* Countdown Display */}
         {raceState?.countdownActive && (
@@ -394,6 +494,15 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     borderWidth: 1,
     borderColor: '#444444',
+  },
+  // AI Car specific styling
+  aiCar: {
+    borderWidth: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   // HUD Styles
   gameHUD: {
