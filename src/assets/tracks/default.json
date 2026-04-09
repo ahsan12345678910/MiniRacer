@@ -1,0 +1,66 @@
+{
+  "id": "default",
+  "name": "Default Rectangle Loop",
+  "dimensions": {
+    "width": 1000,
+    "height": 700
+  },
+  "zones": [
+    {
+      "label": "barrier",
+      "shape": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 1000,
+      "height": 60
+    },
+    {
+      "label": "barrier",
+      "shape": "rect",
+      "x": 0,
+      "y": 640,
+      "width": 1000,
+      "height": 60
+    },
+    {
+      "label": "barrier",
+      "shape": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 60,
+      "height": 700
+    },
+    {
+      "label": "barrier",
+      "shape": "rect",
+      "x": 940,
+      "y": 0,
+      "width": 60,
+      "height": 700
+    },
+    {
+      "label": "asphalt",
+      "shape": "rect",
+      "x": 120,
+      "y": 120,
+      "width": 760,
+      "height": 460
+    },
+    {
+      "label": "grass",
+      "shape": "rect",
+      "x": 300,
+      "y": 240,
+      "width": 400,
+      "height": 220
+    },
+    {
+      "label": "startLine",
+      "shape": "rect",
+      "x": 130,
+      "y": 300,
+      "width": 16,
+      "height": 120
+    }
+  ]
+}

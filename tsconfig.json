@@ -4,6 +4,7 @@
     "strict": true,
     "target": "ES2020",
     "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
       "@app/*": ["src/app/*"],
