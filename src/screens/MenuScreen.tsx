@@ -5,14 +5,21 @@ import { RootStackParamList } from '../../App';
 type Props = NativeStackScreenProps<RootStackParamList, 'Menu'>;
 
 export function MenuScreen({ navigation }: Props) {
+  const onQuit = () => {
+    console.log('Quit pressed');
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>MiniRacer</Text>
       <Pressable style={styles.button} onPress={() => navigation.navigate('Game')}>
-        <Text style={styles.buttonText}>Start Game</Text>
+        <Text style={styles.buttonText}>Play</Text>
       </Pressable>
       <Pressable style={styles.button} onPress={() => navigation.navigate('Settings')}>
         <Text style={styles.buttonText}>Settings</Text>
+      </Pressable>
+      <Pressable style={styles.button} onPress={onQuit}>
+        <Text style={styles.buttonText}>Quit</Text>
       </Pressable>
     </View>
   );
