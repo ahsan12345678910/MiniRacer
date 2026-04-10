@@ -1,21 +1,53 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { RootStackParamList } from '../../App';
+import { loadGameSettings } from '../game/settingsStorage';
+import { useGameStore } from '../game/GameStore';
+import { audioManager } from '../game/audio/AudioManager';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Menu'>;
 
 export function MenuScreen({ navigation }: Props) {
+  const setSettings = useGameStore((state) => state.setSettings);
+
+  useEffect(() => {
+    let cancelled = false;
+    audioManager.init().catch(() => undefined);
+    loadGameSettings().then((stored) => {
+      if (!cancelled && stored) {
+        setSettings(stored);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [setSettings]);
+
   const onQuit = () => {
+    audioManager.playClick().catch(() => undefined);
     console.log('Quit pressed');
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>MiniRacer</Text>
-      <Pressable style={styles.button} onPress={() => navigation.navigate('Game')}>
+      <Pressable
+        style={styles.button}
+        onPress={() => {
+          audioManager.playClick().catch(() => undefined);
+          navigation.navigate('Game');
+        }}
+      >
         <Text style={styles.buttonText}>Play</Text>
       </Pressable>
-      <Pressable style={styles.button} onPress={() => navigation.navigate('Settings')}>
+      <Pressable
+        style={styles.button}
+        onPress={() => {
+          audioManager.playClick().catch(() => undefined);
+          navigation.navigate('Settings');
+        }}
+      >
         <Text style={styles.buttonText}>Settings</Text>
       </Pressable>
       <Pressable style={styles.button} onPress={onQuit}>

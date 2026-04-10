@@ -75,7 +75,9 @@ export class LapSystem {
   reset(initialPosition?: Vector2) {
     this.currentLapTime = 0;
     this.previousPosition = initialPosition ?? null;
-    this.wasInsideStartLine = initialPosition ? isPointInRect(initialPosition, this.startLine) : false;
+    this.wasInsideStartLine = initialPosition
+      ? isPointInRect(initialPosition, this.startLine)
+      : false;
     this.emitHudUpdate();
   }
 

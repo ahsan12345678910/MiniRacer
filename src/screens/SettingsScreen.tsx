@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { RootStackParamList } from '../../App';
 import { useGameStore } from '../game/GameStore';
 import { clearBestLap, loadGameSettings, saveGameSettings } from '../game/settingsStorage';
+import { audioManager } from '../game/audio/AudioManager';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
@@ -21,6 +22,7 @@ export function SettingsScreen({ navigation }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    audioManager.init().catch(() => undefined);
     loadGameSettings()
       .then((stored) => {
         if (!cancelled && stored) {
@@ -46,9 +48,11 @@ export function SettingsScreen({ navigation }: Props) {
     saveGameSettings(settings).catch(() => {
       // Non-fatal if persistence fails.
     });
+    audioManager.setEnabled(settings.soundEnabled).catch(() => undefined);
   }, [settings]);
 
   const onResetBestLap = async () => {
+    await audioManager.playClick().catch(() => undefined);
     await clearBestLap();
     setBestLapTime(null);
   };
@@ -61,8 +65,14 @@ export function SettingsScreen({ navigation }: Props) {
         <Text style={styles.sectionLabel}>Control Mode</Text>
         <View style={styles.row}>
           <Pressable
-            style={[styles.optionButton, settings.controlMode === 'touchZones' && styles.optionActive]}
-            onPress={() => setControlMode('touchZones')}
+            style={[
+              styles.optionButton,
+              settings.controlMode === 'touchZones' && styles.optionActive,
+            ]}
+            onPress={() => {
+              audioManager.playClick().catch(() => undefined);
+              setControlMode('touchZones');
+            }}
           >
             <Text style={styles.optionText}>Touch Zones</Text>
           </Pressable>
@@ -71,7 +81,10 @@ export function SettingsScreen({ navigation }: Props) {
               styles.optionButton,
               settings.controlMode === 'virtualJoystick' && styles.optionActive,
             ]}
-            onPress={() => setControlMode('virtualJoystick')}
+            onPress={() => {
+              audioManager.playClick().catch(() => undefined);
+              setControlMode('virtualJoystick');
+            }}
           >
             <Text style={styles.optionText}>Joystick</Text>
           </Pressable>
@@ -82,7 +95,10 @@ export function SettingsScreen({ navigation }: Props) {
         <Text style={styles.sectionLabel}>Sound</Text>
         <Pressable
           style={[styles.optionButton, settings.soundEnabled && styles.optionActive]}
-          onPress={() => setSoundEnabled(!settings.soundEnabled)}
+          onPress={() => {
+            audioManager.playClick().catch(() => undefined);
+            setSoundEnabled(!settings.soundEnabled);
+          }}
         >
           <Text style={styles.optionText}>{settings.soundEnabled ? 'On' : 'Off'}</Text>
         </Pressable>
@@ -94,7 +110,13 @@ export function SettingsScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
-      <Pressable style={styles.button} onPress={() => navigation.goBack()}>
+      <Pressable
+        style={styles.button}
+        onPress={() => {
+          audioManager.playClick().catch(() => undefined);
+          navigation.goBack();
+        }}
+      >
         <Text style={styles.buttonText}>Back</Text>
       </Pressable>
     </View>

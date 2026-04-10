@@ -4,33 +4,43 @@ import { useEffect, useMemo } from 'react';
 import { RootStackParamList } from '../../App';
 import { useGameStore } from '../game/GameStore';
 import { loadGameSettings } from '../game/settingsStorage';
+import { audioManager } from '../game/audio/AudioManager';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
+const TRACK_TILES = Array.from({ length: 80 }, (_, index) => index);
 
 export function GameScreen({ navigation }: Props) {
-  const { carPosition, carVelocity, carAngle, lapData, settings, setSettings } = useGameStore(
-    (state) => ({
-      carPosition: state.carPosition,
-      carVelocity: state.carVelocity,
-      carAngle: state.carAngle,
-      lapData: state.lapData,
-      settings: state.settings,
-      setSettings: state.setSettings,
-    }),
-  );
+  const carPosition = useGameStore((state) => state.carPosition);
+  const carVelocity = useGameStore((state) => state.carVelocity);
+  const carAngle = useGameStore((state) => state.carAngle);
+  const currentLap = useGameStore((state) => state.lapData.currentLap);
+  const bestLapTime = useGameStore((state) => state.lapData.bestLapTime);
+  const settings = useGameStore((state) => state.settings);
+  const setSettings = useGameStore((state) => state.setSettings);
 
   useEffect(() => {
     let cancelled = false;
-    loadGameSettings().then((stored) => {
-      if (!cancelled && stored) {
-        setSettings(stored);
-      }
-    });
+    loadGameSettings()
+      .then((stored) => {
+        if (!cancelled && stored) {
+          setSettings(stored);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          audioManager.init().catch(() => undefined);
+        }
+      });
 
     return () => {
       cancelled = true;
+      audioManager.shutdown().catch(() => undefined);
     };
   }, [setSettings]);
+
+  useEffect(() => {
+    audioManager.setEnabled(settings.soundEnabled).catch(() => undefined);
+  }, [settings.soundEnabled]);
 
   const controlModeLabel = settings.controlMode === 'touchZones' ? 'Touch Zones' : 'Joystick';
   const soundLabel = settings.soundEnabled ? 'On' : 'Off';
@@ -43,8 +53,11 @@ export function GameScreen({ navigation }: Props) {
   const carHeight = 12;
 
   const carSpeedKmH = Math.hypot(carVelocity.x, carVelocity.y) * 3.6;
-  const bestLapLabel =
-    lapData.bestLapTime === null ? '--:--.---' : formatLapTime(lapData.bestLapTime);
+  const bestLapLabel = bestLapTime === null ? '--:--.---' : formatLapTime(bestLapTime);
+
+  useEffect(() => {
+    audioManager.updateEngineFromSpeed(carSpeedKmH).catch(() => undefined);
+  }, [carSpeedKmH]);
 
   const carStyle = useMemo(() => {
     const clampedX = Math.max(0, Math.min(trackWidth, carPosition.x));
@@ -68,7 +81,7 @@ export function GameScreen({ navigation }: Props) {
         </View>
         <View style={styles.hudRow}>
           <Text style={styles.hudLabel}>Lap</Text>
-          <Text style={styles.hudValue}>{lapData.currentLap}</Text>
+          <Text style={styles.hudValue}>{currentLap}</Text>
         </View>
         <View style={styles.hudRow}>
           <Text style={styles.hudLabel}>Best</Text>
@@ -84,13 +97,19 @@ export function GameScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <Pressable style={styles.pauseButton} onPress={() => navigation.navigate('Menu')}>
+      <Pressable
+        style={styles.pauseButton}
+        onPress={() => {
+          audioManager.playClick().catch(() => undefined);
+          navigation.navigate('Menu');
+        }}
+      >
         <Text style={styles.pauseButtonText}>Pause</Text>
       </Pressable>
 
       <View style={styles.trackWrapper}>
         <View style={styles.trackSurface}>
-          {Array.from({ length: 80 }).map((_, index) => (
+          {TRACK_TILES.map((index) => (
             <View key={index} style={styles.tile} />
           ))}
           <View style={[styles.startLine, { left: 44, top: 102 }]} />
