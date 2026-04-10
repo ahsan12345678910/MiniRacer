@@ -12,13 +12,21 @@ export type LapData = {
   completedLaps: number;
 };
 
+export type ControlMode = 'touchZones' | 'virtualJoystick';
+
+export type GameSettings = {
+  controlMode: ControlMode;
+};
+
 type GameState = {
   carPosition: Vector2;
   carVelocity: Vector2;
   carAngle: number;
   lapData: LapData;
+  settings: GameSettings;
   setCarVelocity: (velocity: Vector2) => void;
   setCarAngle: (angle: number) => void;
+  setControlMode: (mode: ControlMode) => void;
   completeLap: () => void;
   resetRace: () => void;
   update: (dt: number) => void;
@@ -34,11 +42,16 @@ const initialLapData: LapData = {
   completedLaps: 0,
 };
 
+const initialSettings: GameSettings = {
+  controlMode: 'touchZones',
+};
+
 export const useGameStore = create<GameState>((set, get) => ({
   carPosition: initialPosition,
   carVelocity: initialVelocity,
   carAngle: 0,
   lapData: initialLapData,
+  settings: initialSettings,
 
   setCarVelocity: (velocity) => {
     set({ carVelocity: velocity });
@@ -46,6 +59,15 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setCarAngle: (angle) => {
     set({ carAngle: angle });
+  },
+
+  setControlMode: (mode) => {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        controlMode: mode,
+      },
+    }));
   },
 
   completeLap: () => {
