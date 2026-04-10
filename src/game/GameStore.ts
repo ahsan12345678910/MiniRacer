@@ -10,6 +10,7 @@ export type LapData = {
   currentLapTime: number;
   bestLapTime: number | null;
   completedLaps: number;
+  lapTimes: number[];
 };
 
 export type ControlMode = 'touchZones' | 'virtualJoystick';
@@ -27,7 +28,8 @@ type GameState = {
   setCarVelocity: (velocity: Vector2) => void;
   setCarAngle: (angle: number) => void;
   setControlMode: (mode: ControlMode) => void;
-  completeLap: () => void;
+  completeLap: (lapTimeSeconds?: number) => void;
+  setBestLapTime: (bestLapTime: number | null) => void;
   resetRace: () => void;
   update: (dt: number) => void;
 };
@@ -40,6 +42,7 @@ const initialLapData: LapData = {
   currentLapTime: 0,
   bestLapTime: null,
   completedLaps: 0,
+  lapTimes: [],
 };
 
 const initialSettings: GameSettings = {
@@ -70,12 +73,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     }));
   },
 
-  completeLap: () => {
+  completeLap: (lapTimeSeconds) => {
     const { lapData } = get();
+    const resolvedLapTime = lapTimeSeconds ?? lapData.currentLapTime;
+    const lapTimes = [...lapData.lapTimes, resolvedLapTime];
     const bestLapTime =
       lapData.bestLapTime === null
-        ? lapData.currentLapTime
-        : Math.min(lapData.bestLapTime, lapData.currentLapTime);
+        ? resolvedLapTime
+        : Math.min(lapData.bestLapTime, resolvedLapTime);
 
     set({
       lapData: {
@@ -83,8 +88,18 @@ export const useGameStore = create<GameState>((set, get) => ({
         currentLapTime: 0,
         bestLapTime,
         completedLaps: lapData.completedLaps + 1,
+        lapTimes,
       },
     });
+  },
+
+  setBestLapTime: (bestLapTime) => {
+    set((state) => ({
+      lapData: {
+        ...state.lapData,
+        bestLapTime,
+      },
+    }));
   },
 
   resetRace: () => {
