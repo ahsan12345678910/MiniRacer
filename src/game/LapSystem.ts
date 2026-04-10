@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGameStore } from './GameStore';
 import { Track, type RectZone } from './Track';
+import { BEST_LAP_STORAGE_KEY } from './settingsStorage';
 
 type Vector2 = {
   x: number;
@@ -26,7 +27,7 @@ type LapSystemOptions = {
   onLapComplete?: (payload: LapCompletePayload) => void;
 };
 
-const DEFAULT_STORAGE_KEY = 'miniracer.bestLap';
+const DEFAULT_STORAGE_KEY = BEST_LAP_STORAGE_KEY;
 
 function isPointInRect(point: Vector2, zone: RectZone): boolean {
   return (

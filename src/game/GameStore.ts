@@ -17,6 +17,7 @@ export type ControlMode = 'touchZones' | 'virtualJoystick';
 
 export type GameSettings = {
   controlMode: ControlMode;
+  soundEnabled: boolean;
 };
 
 type GameState = {
@@ -28,6 +29,8 @@ type GameState = {
   setCarVelocity: (velocity: Vector2) => void;
   setCarAngle: (angle: number) => void;
   setControlMode: (mode: ControlMode) => void;
+  setSoundEnabled: (enabled: boolean) => void;
+  setSettings: (settings: Partial<GameSettings>) => void;
   completeLap: (lapTimeSeconds?: number) => void;
   setBestLapTime: (bestLapTime: number | null) => void;
   resetRace: () => void;
@@ -47,6 +50,7 @@ const initialLapData: LapData = {
 
 const initialSettings: GameSettings = {
   controlMode: 'touchZones',
+  soundEnabled: true,
 };
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -69,6 +73,24 @@ export const useGameStore = create<GameState>((set, get) => ({
       settings: {
         ...state.settings,
         controlMode: mode,
+      },
+    }));
+  },
+
+  setSoundEnabled: (enabled) => {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        soundEnabled: enabled,
+      },
+    }));
+  },
+
+  setSettings: (settings) => {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        ...settings,
       },
     }));
   },

@@ -1,18 +1,39 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { RootStackParamList } from '../../App';
 import { useGameStore } from '../game/GameStore';
+import { loadGameSettings } from '../game/settingsStorage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
 
 export function GameScreen({ navigation }: Props) {
-  const { carPosition, carVelocity, carAngle, lapData } = useGameStore((state) => ({
-    carPosition: state.carPosition,
-    carVelocity: state.carVelocity,
-    carAngle: state.carAngle,
-    lapData: state.lapData,
-  }));
+  const { carPosition, carVelocity, carAngle, lapData, settings, setSettings } = useGameStore(
+    (state) => ({
+      carPosition: state.carPosition,
+      carVelocity: state.carVelocity,
+      carAngle: state.carAngle,
+      lapData: state.lapData,
+      settings: state.settings,
+      setSettings: state.setSettings,
+    }),
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    loadGameSettings().then((stored) => {
+      if (!cancelled && stored) {
+        setSettings(stored);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setSettings]);
+
+  const controlModeLabel = settings.controlMode === 'touchZones' ? 'Touch Zones' : 'Joystick';
+  const soundLabel = settings.soundEnabled ? 'On' : 'Off';
 
   const trackWidth = 1000;
   const trackHeight = 700;
@@ -52,6 +73,14 @@ export function GameScreen({ navigation }: Props) {
         <View style={styles.hudRow}>
           <Text style={styles.hudLabel}>Best</Text>
           <Text style={styles.hudValue}>{bestLapLabel}</Text>
+        </View>
+        <View style={styles.hudRow}>
+          <Text style={styles.hudLabel}>Controls</Text>
+          <Text style={styles.hudValue}>{controlModeLabel}</Text>
+        </View>
+        <View style={styles.hudRow}>
+          <Text style={styles.hudLabel}>Sound</Text>
+          <Text style={styles.hudValue}>{soundLabel}</Text>
         </View>
       </View>
 
