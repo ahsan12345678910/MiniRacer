@@ -1,16 +1,21 @@
 import { Audio, type AVPlaybackStatusSuccess } from 'expo-av';
+import engineSound from '../../../assets/audio/engine.mp3';
+import clickSound from '../../../assets/audio/click.mp3';
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-
-// Replace these URLs with your own files if needed.
-const ENGINE_SOUND_URI = 'https://cdn.freesound.org/previews/250/250547_4486188-lq.mp3';
-const CLICK_SOUND_URI = 'https://cdn.freesound.org/previews/270/270404_5123851-lq.mp3';
+const ENGINE_MIN_UPDATE_MS = 75;
+const RATE_EPSILON = 0.03;
+const VOLUME_EPSILON = 0.025;
 
 class AudioManager {
   private engineSound: Audio.Sound | null = null;
   private clickSound: Audio.Sound | null = null;
   private loaded = false;
   private enabled = true;
+  private engineIsPlaying = false;
+  private lastEngineRate = -1;
+  private lastEngineVolume = -1;
+  private lastEngineUpdateMs = 0;
 
   async init() {
     if (this.loaded) {
@@ -23,19 +28,16 @@ class AudioManager {
       staysActiveInBackground: false,
     });
 
-    const { sound: engine } = await Audio.Sound.createAsync(
-      { uri: ENGINE_SOUND_URI },
-      {
-        shouldPlay: false,
-        isLooping: true,
-        volume: 0.15,
-        rate: 0.8,
-      },
-    );
-    const { sound: click } = await Audio.Sound.createAsync(
-      { uri: CLICK_SOUND_URI },
-      { shouldPlay: false, volume: 0.55 },
-    );
+    const { sound: engine } = await Audio.Sound.createAsync(engineSound, {
+      shouldPlay: false,
+      isLooping: true,
+      volume: 0.15,
+      rate: 0.8,
+    });
+    const { sound: click } = await Audio.Sound.createAsync(clickSound, {
+      shouldPlay: false,
+      volume: 0.55,
+    });
 
     this.engineSound = engine;
     this.clickSound = click;
@@ -46,6 +48,7 @@ class AudioManager {
     this.enabled = enabled;
     if (!enabled && this.engineSound) {
       await this.engineSound.pauseAsync();
+      this.engineIsPlaying = false;
     }
   }
 
@@ -55,20 +58,32 @@ class AudioManager {
     }
 
     if (!this.enabled) {
-      await this.engineSound.pauseAsync();
+      if (this.engineIsPlaying) {
+        await this.engineSound.pauseAsync();
+        this.engineIsPlaying = false;
+      }
       return;
     }
 
     const normalized = clamp(speedKmh / 220, 0, 1);
     const targetRate = 0.75 + normalized * 0.85;
     const targetVolume = 0.12 + normalized * 0.45;
-    const status = (await this.engineSound.getStatusAsync()) as AVPlaybackStatusSuccess;
-    if (!status.isLoaded) {
+    const now = Date.now();
+    const shouldSkipUpdate =
+      Math.abs(targetRate - this.lastEngineRate) < RATE_EPSILON &&
+      Math.abs(targetVolume - this.lastEngineVolume) < VOLUME_EPSILON &&
+      now - this.lastEngineUpdateMs < ENGINE_MIN_UPDATE_MS;
+    if (shouldSkipUpdate) {
       return;
     }
 
-    if (!status.isPlaying) {
+    if (!this.engineIsPlaying) {
+      const status = (await this.engineSound.getStatusAsync()) as AVPlaybackStatusSuccess;
+      if (!status.isLoaded) {
+        return;
+      }
       await this.engineSound.playAsync();
+      this.engineIsPlaying = true;
     }
 
     await this.engineSound.setStatusAsync({
@@ -77,6 +92,9 @@ class AudioManager {
       volume: targetVolume,
       shouldCorrectPitch: true,
     });
+    this.lastEngineRate = targetRate;
+    this.lastEngineVolume = targetVolume;
+    this.lastEngineUpdateMs = now;
   }
 
   async playClick() {
@@ -102,6 +120,10 @@ class AudioManager {
       this.clickSound = null;
     }
     this.loaded = false;
+    this.engineIsPlaying = false;
+    this.lastEngineRate = -1;
+    this.lastEngineVolume = -1;
+    this.lastEngineUpdateMs = 0;
   }
 }
 

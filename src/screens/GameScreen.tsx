@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useEffect, useMemo } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import { RootStackParamList } from '../../App';
 import { useGameStore } from '../game/GameStore';
 import { loadGameSettings } from '../game/settingsStorage';
@@ -55,9 +55,11 @@ export function GameScreen({ navigation }: Props) {
   const carSpeedKmH = Math.hypot(carVelocity.x, carVelocity.y) * 3.6;
   const bestLapLabel = bestLapTime === null ? '--:--.---' : formatLapTime(bestLapTime);
 
+  const audioSpeedSample = useMemo(() => Math.round(carSpeedKmH * 2) / 2, [carSpeedKmH]);
+
   useEffect(() => {
-    audioManager.updateEngineFromSpeed(carSpeedKmH).catch(() => undefined);
-  }, [carSpeedKmH]);
+    audioManager.updateEngineFromSpeed(audioSpeedSample).catch(() => undefined);
+  }, [audioSpeedSample]);
 
   const carStyle = useMemo(() => {
     const clampedX = Math.max(0, Math.min(trackWidth, carPosition.x));
@@ -109,9 +111,7 @@ export function GameScreen({ navigation }: Props) {
 
       <View style={styles.trackWrapper}>
         <View style={styles.trackSurface}>
-          {TRACK_TILES.map((index) => (
-            <View key={index} style={styles.tile} />
-          ))}
+          <TrackTiles />
           <View style={[styles.startLine, { left: 44, top: 102 }]} />
           <View style={[styles.car, carStyle]} />
         </View>
@@ -119,6 +119,16 @@ export function GameScreen({ navigation }: Props) {
     </View>
   );
 }
+
+const TrackTiles = memo(function TrackTiles() {
+  return (
+    <>
+      {TRACK_TILES.map((index) => (
+        <View key={index} style={styles.tile} />
+      ))}
+    </>
+  );
+});
 
 function formatLapTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
