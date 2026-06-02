@@ -11,6 +11,7 @@ export interface CarState {
   };
   angle: number; // in radians
   speed: number; // magnitude of velocity
+  maxSpeed: number; // maximum speed for audio calculations
 }
 
 export interface LapData {
@@ -67,6 +68,7 @@ interface GameStore extends GameStoreState {
   setCarPosition: (x: number, y: number) => void;
   setCarVelocity: (x: number, y: number) => void;
   setCarAngle: (angle: number) => void;
+  setCarMaxSpeed: (maxSpeed: number) => void;
   accelerate: (force: number) => void;
   brake: (force: number) => void;
   turn: (angle: number) => void;
@@ -92,6 +94,7 @@ const initialCarState: CarState = {
   velocity: { x: 0, y: 0 },
   angle: 0,
   speed: 0,
+  maxSpeed: 10.0, // Default maximum speed
 };
 
 const initialLapData: LapData = {
@@ -208,6 +211,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       console.log('GameStore: Setting car angle:', angle);
       return {
         car: { ...state.car, angle },
+      };
+    }),
+
+  setCarMaxSpeed: (maxSpeed: number) =>
+    set(state => {
+      console.log('GameStore: Setting car maxSpeed:', maxSpeed);
+      return {
+        car: { ...state.car, maxSpeed },
       };
     }),
 

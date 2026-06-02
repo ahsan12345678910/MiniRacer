@@ -1,17 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-// SIMPLIFIED: Commented out complex audio system
-// import { useClickSound } from '../audio/useAudio';
+import { useSimpleClickSound } from '../audio/useSimpleAudio';
 
 const MenuScreen: React.FC = () => {
   const navigation = useNavigation();
-  // SIMPLIFIED: Removed audio dependency
-  // const { playClickSound } = useClickSound();
+  const { playClickSound } = useSimpleClickSound();
 
   const handlePlay = () => {
-    // SIMPLIFIED: Removed audio call
-    // playClickSound();
+    playClickSound();
     console.log('Play button pressed - MultiCar Racing');
     navigation.navigate('Game' as never);
   };
@@ -20,15 +17,15 @@ const MenuScreen: React.FC = () => {
 
 
   const handleSettings = () => {
-    // SIMPLIFIED: Removed audio call
-    // playClickSound();
+    playClickSound();
     console.log('Settings button pressed');
     navigation.navigate('Settings' as never);
   };
 
+  // Audio system is now working - debug functions removed
+
   const handleQuit = () => {
-    // SIMPLIFIED: Removed audio call
-    // playClickSound();
+    playClickSound();
     console.log('Quit button pressed');
     Alert.alert('Quit Game', 'Are you sure you want to quit?', [
       { text: 'Cancel', style: 'cancel' },
@@ -50,6 +47,7 @@ const MenuScreen: React.FC = () => {
         <TouchableOpacity style={styles.menuButton} onPress={handleSettings}>
           <Text style={styles.buttonText}>Settings</Text>
         </TouchableOpacity>
+        
         <TouchableOpacity
           style={[styles.menuButton, styles.quitButton]}
           onPress={handleQuit}
@@ -96,6 +94,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  // Audio test button styles removed
+  debugButton: {
+    backgroundColor: '#2d5a87',
   },
   quitButton: {
     backgroundColor: '#8b0000',

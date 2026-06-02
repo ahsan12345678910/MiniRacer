@@ -7,6 +7,7 @@
 import { SimpleCar, SimpleCarInputs } from './SimpleCarMovement';
 import { controlsRef } from './input/InputManager';
 import { createRaceTrack } from './track/TrackDesign';
+import { useGameStore } from './store/GameStore';
 
 export interface SimpleRaceState {
   playerCar: SimpleCar;
@@ -29,6 +30,13 @@ export interface SimpleRaceState {
   // Pause system
   isPaused: boolean;
   pauseTime: number;
+  // Position system
+  carPositions: Array<{
+    carId: string;
+    position: number;
+    progress: number;
+    lapProgress: number;
+  }>;
 }
 
 export class SimpleRaceManager {
@@ -37,14 +45,16 @@ export class SimpleRaceManager {
   private track = createRaceTrack();
 
   constructor() {
-    // Create player car at start line (new professional track)
-    const playerCar = new SimpleCar({ x: 200, y: 700 }, 0);
+    // Create player car at start line (straight track)
+    const playerCar = new SimpleCar({ x: 50, y: 150 }, 0);
     
-    // Create AI cars at different positions on the track
+    // Create AI cars at different positions on the track (5 AI cars total)
     const aiCars = [
-      new SimpleCar({ x: 230, y: 700 }, 0),
-      new SimpleCar({ x: 260, y: 700 }, 0),
-      new SimpleCar({ x: 290, y: 700 }, 0),
+      new SimpleCar({ x: 80, y: 150 }, 0),
+      new SimpleCar({ x: 110, y: 150 }, 0),
+      new SimpleCar({ x: 140, y: 150 }, 0),
+      new SimpleCar({ x: 170, y: 150 }, 0),
+      new SimpleCar({ x: 200, y: 150 }, 0),
     ];
 
     this.state = {
@@ -52,11 +62,13 @@ export class SimpleRaceManager {
       aiCars,
       raceStarted: false, // Don't start race immediately
       raceTime: 0,
-      playerPosition: { x: 200, y: 700 },
+      playerPosition: { x: 50, y: 150 },
       aiPositions: [
-        { x: 230, y: 700 },
-        { x: 260, y: 700 },
-        { x: 290, y: 700 },
+        { x: 80, y: 150 },
+        { x: 110, y: 150 },
+        { x: 140, y: 150 },
+        { x: 170, y: 150 },
+        { x: 200, y: 150 },
       ],
       countdown: 3, // Start countdown at 3
       countdownActive: true, // Countdown is active
@@ -72,6 +84,8 @@ export class SimpleRaceManager {
       // Pause system initialization
       isPaused: false,
       pauseTime: 0,
+      // Position system initialization
+      carPositions: [],
     };
 
     console.log('🏁 SimpleRaceManager: Created with', aiCars.length, 'AI cars');
@@ -89,6 +103,12 @@ export class SimpleRaceManager {
     this.state.countdown = 3;
     this.state.raceStarted = false; // Don't start race until countdown finishes
     this.state.raceTime = 0;
+    
+    // Initialize GameStore with correct maxSpeed
+    const carConfig = this.state.playerCar.getConfig();
+    const gameStore = useGameStore.getState();
+    gameStore.setCarMaxSpeed(carConfig.maxSpeed);
+    console.log('🔊 SimpleRaceManager: Initialized GameStore maxSpeed to:', carConfig.maxSpeed);
     
     console.log('🏁 SimpleRaceManager: Countdown started at 3');
   }
@@ -123,15 +143,17 @@ export class SimpleRaceManager {
     this.state.isPaused = false;
     this.state.pauseTime = 0;
     
-    // Reset player car to start line (new professional track)
-    this.state.playerCar.resetToStart({ x: 200, y: 700 }, 0);
+    // Reset player car to start line (straight track)
+    this.state.playerCar.resetToStart({ x: 50, y: 150 }, 0);
     
     // Reset AI cars to different positions on track
     this.state.aiCars.forEach((car, index) => {
       const positions = [
-        { x: 230, y: 700 },
-        { x: 260, y: 700 },
-        { x: 290, y: 700 },
+        { x: 80, y: 150 },
+        { x: 110, y: 150 },
+        { x: 140, y: 150 },
+        { x: 170, y: 150 },
+        { x: 200, y: 150 },
       ];
       car.resetToStart(positions[index], 0);
     });
@@ -177,6 +199,83 @@ export class SimpleRaceManager {
    */
   isRacePaused(): boolean {
     return this.state.isPaused;
+  }
+
+  /**
+   * Calculate car positions based on progress
+   */
+  private calculateCarPositions(): void {
+    const cars = [
+      { id: 'player', car: this.state.playerCar, position: this.state.playerPosition },
+      ...this.state.aiCars.map((car, index) => ({
+        id: `ai_${index}`,
+        car,
+        position: this.state.aiPositions[index]
+      }))
+    ];
+
+    // Calculate progress for each car
+    const carProgress = cars.map(({ id, car, position }) => {
+      const carState = car.getState();
+      const progress = this.calculateCarProgress(carState.x, carState.y);
+      const lapProgress = this.calculateLapProgress(carState.x, carState.y);
+      
+      return {
+        carId: id,
+        position: 0, // Will be calculated below
+        progress,
+        lapProgress
+      };
+    });
+
+    // Sort by progress (highest first)
+    carProgress.sort((a, b) => b.progress - a.progress);
+
+    // Assign positions
+    carProgress.forEach((car, index) => {
+      car.position = index + 1;
+    });
+
+    // Update state
+    this.state.carPositions = carProgress;
+
+    console.log('🏁 SimpleRaceManager: Car positions updated:', carProgress.map(c => `${c.carId}: ${c.position} (${c.progress.toFixed(1)})`));
+  }
+
+  /**
+   * Calculate car progress along the track
+   */
+  private calculateCarProgress(x: number, y: number): number {
+    // For straight track, progress is simply the X position
+    // Track length is 5000px, so progress is x / 5000
+    const trackLength = 5000;
+    const progress = Math.max(0, Math.min(1, x / trackLength));
+    return progress;
+  }
+
+  /**
+   * Calculate lap progress (0-1 within current lap)
+   */
+  private calculateLapProgress(x: number, y: number): number {
+    // For straight track, lap progress is X position within the track
+    const trackLength = 5000;
+    const lapProgress = Math.max(0, Math.min(1, x / trackLength));
+    return lapProgress;
+  }
+
+  /**
+   * Get player position (1st, 2nd, 3rd, etc.)
+   */
+  getPlayerPosition(): number {
+    const playerPosition = this.state.carPositions.find(car => car.carId === 'player');
+    return playerPosition ? playerPosition.position : 1;
+  }
+
+  /**
+   * Get total number of cars
+   */
+  getTotalCars(): number {
+    return this.state.carPositions.length;
   }
 
   /**
@@ -347,7 +446,7 @@ export class SimpleRaceManager {
     }
 
     if (!this.state.raceStarted) {
-      console.log('🏁 SimpleRaceManager: Race not started, skipping update');
+        console.log('🏁 SimpleRaceManager: Race not started, skipping update');
       console.log('🏁 SimpleRaceManager: Race state:', this.state.raceStarted);
       return;
     }
@@ -382,6 +481,9 @@ export class SimpleRaceManager {
     const playerState = this.state.playerCar.getState();
     this.state.playerPosition = { x: playerState.x, y: playerState.y };
 
+    // Sync player car state with GameStore for audio system
+    this.syncPlayerCarWithGameStore(playerState);
+
     // Check for start line crossing
     if (this.isCarCrossingStartLine(this.state.playerCar) && this.isMovingForward(this.state.playerCar)) {
       this.handleStartLineCrossing();
@@ -408,6 +510,9 @@ export class SimpleRaceManager {
       console.log(`🏁 SimpleRaceManager: AI car ${index} position updated to:`, this.state.aiPositions[index]);
     });
 
+    // Calculate car positions
+    this.calculateCarPositions();
+
     // ALWAYS log final positions
     console.log('🏁 SimpleRaceManager: Final player position:', this.state.playerPosition);
     console.log('🏁 SimpleRaceManager: Final AI positions:', this.state.aiPositions);
@@ -419,45 +524,20 @@ export class SimpleRaceManager {
   private generateAIInputs(aiCar: SimpleCar, index: number): SimpleCarInputs {
     const carState = aiCar.getState();
     
-    // Define a proper racing line that follows the professional track layout
+    // Define a simple racing line for the wider and longer straight track
     const racingLine = [
-      { x: 200, y: 700 }, // Start line
-      { x: 300, y: 700 }, // Main straight
-      { x: 400, y: 700 }, // Main straight end
-      { x: 450, y: 700 }, // Turn 1 approach
-      { x: 470, y: 680 }, // Turn 1
-      { x: 470, y: 620 }, // Turn 1 exit
-      { x: 520, y: 620 }, // Upper right section
-      { x: 570, y: 620 }, // Turn 2 approach
-      { x: 550, y: 580 }, // Turn 2
-      { x: 550, y: 520 }, // Turn 2 exit
-      { x: 500, y: 520 }, // Upper section
-      { x: 450, y: 520 }, // Turn 3 approach
-      { x: 430, y: 500 }, // Turn 3
-      { x: 430, y: 440 }, // Turn 3 exit
-      { x: 380, y: 440 }, // Upper left section
-      { x: 330, y: 440 }, // Turn 4 approach
-      { x: 310, y: 420 }, // Turn 4
-      { x: 310, y: 360 }, // Turn 4 exit
-      { x: 260, y: 360 }, // Left section
-      { x: 210, y: 360 }, // Turn 5 approach
-      { x: 190, y: 340 }, // Turn 5
-      { x: 190, y: 280 }, // Turn 5 exit
-      { x: 240, y: 280 }, // Middle section
-      { x: 290, y: 280 }, // Turn 6 approach
-      { x: 310, y: 260 }, // Turn 6
-      { x: 310, y: 200 }, // Turn 6 exit
-      { x: 360, y: 200 }, // Lower left section
-      { x: 410, y: 200 }, // Turn 7 approach
-      { x: 430, y: 180 }, // Turn 7
-      { x: 430, y: 120 }, // Turn 7 exit
-      { x: 380, y: 120 }, // Lower section
-      { x: 330, y: 120 }, // Turn 8 approach
-      { x: 310, y: 100 }, // Turn 8
-      { x: 310, y: 40 }, // Turn 8 exit
-      { x: 360, y: 40 }, // Final section
-      { x: 410, y: 40 }, // Back to start
-      { x: 200, y: 700 }, // Complete lap
+      { x: 50, y: 150 }, // Start line
+      { x: 500, y: 150 }, // First checkpoint
+      { x: 1000, y: 150 }, // Second checkpoint
+      { x: 1500, y: 150 }, // Third checkpoint
+      { x: 2000, y: 150 }, // Fourth checkpoint
+      { x: 2500, y: 150 }, // Fifth checkpoint
+      { x: 3000, y: 150 }, // Sixth checkpoint
+      { x: 3500, y: 150 }, // Seventh checkpoint
+      { x: 4000, y: 150 }, // Eighth checkpoint
+      { x: 4500, y: 150 }, // Ninth checkpoint
+      { x: 4950, y: 150 }, // End of track
+      { x: 50, y: 150 }, // Back to start (for lap completion)
     ];
     
     // Find the closest waypoint to the car
@@ -632,6 +712,32 @@ export class SimpleRaceManager {
   }
 
   /**
+   * Sync player car state with GameStore for audio system
+   */
+  private syncPlayerCarWithGameStore(playerState: any): void {
+    try {
+      const gameStore = useGameStore.getState();
+      
+      // Update GameStore with current car state
+      gameStore.setCarPosition(playerState.x, playerState.y);
+      gameStore.setCarVelocity(playerState.vx, playerState.vy);
+      gameStore.setCarAngle(playerState.angle);
+      
+      // Update maxSpeed in GameStore (get from SimpleCar config)
+      const carConfig = this.state.playerCar.getConfig();
+      const currentCarState = gameStore.car;
+      if (currentCarState.maxSpeed !== carConfig.maxSpeed) {
+        gameStore.setCarMaxSpeed(carConfig.maxSpeed);
+        console.log('🔊 SimpleRaceManager: Updated maxSpeed to:', carConfig.maxSpeed);
+      }
+      
+      console.log('🔊 SimpleRaceManager: Synced car state with GameStore - position:', playerState.x.toFixed(1), playerState.y.toFixed(1), 'speed:', playerState.speed.toFixed(2));
+    } catch (error) {
+      console.error('❌ SimpleRaceManager: Failed to sync car state with GameStore:', error);
+    }
+  }
+
+  /**
    * Get comprehensive lap information for HUD
    */
   getLapHUDData(): {
@@ -645,6 +751,8 @@ export class SimpleRaceManager {
     lastLapTimeFormatted: string;
     isNewBestLap: boolean;
     raceProgress: number;
+    playerPosition: number;
+    totalCars: number;
   } {
     const currentLapTime = this.getCurrentLapTime();
     const lastLapTime = this.state.lapTimes.length > 0 
@@ -665,7 +773,9 @@ export class SimpleRaceManager {
       lastLapTime,
       lastLapTimeFormatted: lastLapTime > 0 ? this.formatTime(lastLapTime) : '--:--.---',
       isNewBestLap,
-      raceProgress: this.getRaceProgress()
+      raceProgress: this.getRaceProgress(),
+      playerPosition: this.getPlayerPosition(),
+      totalCars: this.getTotalCars()
     };
   }
 }

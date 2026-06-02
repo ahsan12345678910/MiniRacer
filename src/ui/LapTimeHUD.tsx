@@ -9,6 +9,14 @@ import {
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Helper function to get position suffix (1st, 2nd, 3rd, etc.)
+const getPositionSuffix = (position: number): string => {
+  if (position === 1) return 'st';
+  if (position === 2) return 'nd';
+  if (position === 3) return 'rd';
+  return 'th';
+};
+
 interface LapTimeHUDProps {
   currentLap: number;
   totalLaps: number;
@@ -22,6 +30,8 @@ interface LapTimeHUDProps {
   raceProgress: number;
   speed?: number;
   raceTime?: number;
+  playerPosition?: number;
+  totalCars?: number;
 }
 
 export const LapTimeHUD: React.FC<LapTimeHUDProps> = React.memo(({
@@ -37,6 +47,8 @@ export const LapTimeHUD: React.FC<LapTimeHUDProps> = React.memo(({
   raceProgress,
   speed = 0,
   raceTime = 0,
+  playerPosition = 1,
+  totalCars = 6,
 }) => {
   // Animation for new best lap
   const bestLapScale = React.useRef(new Animated.Value(1)).current;
@@ -91,6 +103,14 @@ export const LapTimeHUD: React.FC<LapTimeHUDProps> = React.memo(({
           </Text>
           <Text style={styles.raceProgress}>
             {raceProgress.toFixed(0)}% COMPLETE
+          </Text>
+        </View>
+
+        {/* Position display */}
+        <View style={styles.infoCard}>
+          <Text style={styles.positionLabel}>POSITION</Text>
+          <Text style={styles.positionValue}>
+            {playerPosition}{getPositionSuffix(playerPosition)}/{totalCars}
           </Text>
         </View>
 
@@ -218,6 +238,20 @@ const styles = StyleSheet.create({
     color: '#00FF00',
     fontSize: 10,
     fontWeight: '600',
+    marginTop: 2,
+    letterSpacing: 0.5,
+  },
+  // Position styles
+  positionLabel: {
+    color: '#CCCCCC',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  positionValue: {
+    color: '#FFD700',
+    fontSize: 18,
+    fontWeight: '700',
     marginTop: 2,
     letterSpacing: 0.5,
   },

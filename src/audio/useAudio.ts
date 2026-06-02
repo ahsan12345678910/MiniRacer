@@ -31,34 +31,46 @@ export const useAudio = () => {
     const speedChanged = Math.abs(car.speed - lastSpeedRef.current) > 0.1;
 
     if (speedChanged) {
-      audioManager.updateEngineSound(car.speed, car.maxSpeed);
+      audioManager.updateEngineSound(car.speed, car.maxSpeed || 10.0).catch(error => {
+        console.warn('Failed to update engine sound:', error);
+      });
       lastSpeedRef.current = car.speed;
     }
   }, [car.speed, car.maxSpeed]);
 
   // Play click sound function
   const playClickSound = useCallback(() => {
-    audioManager.playClickSound();
+    audioManager.playClickSound().catch(error => {
+      console.warn('Failed to play click sound:', error);
+    });
   }, []);
 
   // Play engine start sound function
   const playEngineStart = useCallback(() => {
-    audioManager.playEngineStart();
+    audioManager.playEngineStart().catch(error => {
+      console.warn('Failed to play engine start sound:', error);
+    });
   }, []);
 
   // Stop engine sound function
   const stopEngineSound = useCallback(() => {
-    audioManager.stopEngineSound();
+    audioManager.stopEngineSound().catch(error => {
+      console.warn('Failed to stop engine sound:', error);
+    });
   }, []);
 
   // Pause all audio function
   const pauseAllAudio = useCallback(() => {
-    audioManager.pauseAllAudio();
+    audioManager.pauseAllAudio().catch(error => {
+      console.warn('Failed to pause all audio:', error);
+    });
   }, []);
 
   // Resume all audio function
   const resumeAllAudio = useCallback(() => {
-    audioManager.resumeAllAudio();
+    audioManager.resumeAllAudio().catch(error => {
+      console.warn('Failed to resume all audio:', error);
+    });
   }, []);
 
   return {

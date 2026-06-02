@@ -16,6 +16,8 @@ import SimpleRaceScreen from './src/screens/SimpleRaceScreen';
 import SimpleCarTestScreen from './src/screens/SimpleCarTestScreen';
 // SIMPLIFIED: Using simple settings screen instead of complex one
 import SimpleSettingsScreen from './src/screens/SimpleSettingsScreen';
+// Race results screen
+import RaceResultsScreen from './src/screens/RaceResultsScreen';
 
 // Define navigation types
 export type RootStackParamList = {
@@ -26,6 +28,18 @@ export type RootStackParamList = {
   SimpleRace: undefined;
   SimpleCarTest: undefined;
   Settings: undefined;
+  RaceResults: {
+    results?: {
+      totalLaps: number;
+      completedLaps: number;
+      lapTimes: Array<{ lapNumber: number; time: number; timestamp: number }>;
+      bestLapTime: number;
+      totalRaceTime: number;
+      playerPosition: number;
+      totalCars: number;
+      isRaceFinished: boolean;
+    };
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -48,6 +62,7 @@ export default function App() {
         <Stack.Screen name="SimpleRace" component={SimpleRaceScreen} />
         <Stack.Screen name="SimpleCarTest" component={SimpleCarTestScreen} />
         <Stack.Screen name="Settings" component={SimpleSettingsScreen} />
+        <Stack.Screen name="RaceResults" component={RaceResultsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
     // <StatusBar style="light" />

@@ -18,8 +18,11 @@ import { createSimpleRealisticTrack } from '../game/track/SimpleRealisticTrack';
 import { SimpleRealisticTrackRenderer } from '../game/track/SimpleRealisticTrackRenderer';
 import { createProfessionalTrack } from '../game/track/ProfessionalTrackDesign';
 import { ProfessionalTrackRenderer } from '../game/track/ProfessionalTrackRenderer';
+import { createStraightTrack } from '../game/track/StraightTrackDesign';
+import { StraightTrackRenderer } from '../game/track/StraightTrackRenderer';
 import { LapTimeHUD } from '../ui/LapTimeHUD';
 import { useLapTimeHUD } from '../hooks/useLapTimeHUD';
+import { useSimpleAudio } from '../audio/useSimpleAudio';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -52,18 +55,31 @@ const GameScreen: React.FC = () => {
   const [track] = useState(createRaceTrack());
   const [realisticTrack] = useState(createSimpleRealisticTrack());
   const [professionalTrack] = useState(createProfessionalTrack());
+  const [straightTrack] = useState(createStraightTrack());
   const [isPaused, setIsPaused] = useState(false);
   
   // HUD hook
   const { hudData, isActive, startHUDUpdates, stopHUDUpdates, resetHUD } = useLapTimeHUD(50); // 20 FPS updates
+  
+  // Simple audio hook for engine sound
+  const { playEngineStart, stopEngineSound, pauseAllAudio, resumeAllAudio } = useSimpleAudio();
 
   // Pause button handler
   const handlePauseToggle = () => {
     const raceManager = raceManagerRef.current;
     if (raceManager) {
       raceManager.togglePause();
-      setIsPaused(raceManager.isRacePaused());
-      console.log('⏸️ GameScreen: Pause toggled, isPaused:', raceManager.isRacePaused());
+      const isPaused = raceManager.isRacePaused();
+      setIsPaused(isPaused);
+      
+      // Handle audio based on pause state
+      if (isPaused) {
+        pauseAllAudio();
+      } else {
+        resumeAllAudio();
+      }
+      
+      console.log('⏸️ GameScreen: Pause toggled, isPaused:', isPaused);
     }
   };
 
@@ -73,6 +89,9 @@ const GameScreen: React.FC = () => {
     
     // Stop HUD updates
     stopHUDUpdates();
+    
+    // Stop all audio
+    stopEngineSound();
     
     // Stop the game loop
     if (loopManagerRef.current) {
@@ -104,6 +123,9 @@ const GameScreen: React.FC = () => {
         raceManager.startRace();
         console.log('🏁 GameScreen: Race started automatically');
         
+        // Start engine sound
+        playEngineStart();
+        
         // Start HUD updates
         startHUDUpdates();
         console.log('🏁 GameScreen: HUD updates started!');
@@ -119,6 +141,7 @@ const GameScreen: React.FC = () => {
     return () => {
       mounted = false;
       stopHUDUpdates();
+      stopEngineSound();
     };
   }, []);
 
@@ -160,6 +183,7 @@ const GameScreen: React.FC = () => {
         mountedRef.current = false;
         const loopManager = loopManagerRef.current;
         loopManager.pause();
+        stopEngineSound();
       };
     }, [ready])
   );
@@ -191,8 +215,8 @@ const GameScreen: React.FC = () => {
         {/* Realistic Track Background */}
         <View style={styles.trackBackground}>
           {/* Render the realistic race track */}
-          <ProfessionalTrackRenderer
-            track={professionalTrack}
+          <StraightTrackRenderer
+            track={straightTrack}
             cameraX={cameraRef.current.getState().x}
             cameraY={cameraRef.current.getState().y}
             screenWidth={screenWidth}
@@ -265,7 +289,7 @@ const GameScreen: React.FC = () => {
             );
           })}
           
-          {/* Fallback AI Cars - Always show 3 AI cars even if race state is not updated */}
+          {/* Fallback AI Cars - Always show 5 AI cars even if race state is not updated */}
           {(!raceState?.aiPositions || raceState.aiPositions.length === 0) && (
             <>
               {/* AI Car 1 - Blue */}
@@ -277,8 +301,8 @@ const GameScreen: React.FC = () => {
                   {
                     backgroundColor: '#4444FF',
                     borderColor: '#4444FF',
-                    left: worldToScreen(280, 100).x - 20,
-                    top: worldToScreen(280, 100).y - 10,
+                    left: worldToScreen(80, 150).x - 20,
+                    top: worldToScreen(80, 150).y - 10,
                   },
                 ]}
               >
@@ -301,8 +325,8 @@ const GameScreen: React.FC = () => {
                   {
                     backgroundColor: '#44FF44',
                     borderColor: '#44FF44',
-                    left: worldToScreen(320, 100).x - 20,
-                    top: worldToScreen(320, 100).y - 10,
+                    left: worldToScreen(110, 150).x - 20,
+                    top: worldToScreen(110, 150).y - 10,
                   },
                 ]}
               >
@@ -325,8 +349,56 @@ const GameScreen: React.FC = () => {
                   {
                     backgroundColor: '#FFFF44',
                     borderColor: '#FFFF44',
-                    left: worldToScreen(350, 100).x - 20,
-                    top: worldToScreen(350, 100).y - 10,
+                    left: worldToScreen(140, 150).x - 20,
+                    top: worldToScreen(140, 150).y - 10,
+                  },
+                ]}
+              >
+                <View style={styles.carWindows} />
+                <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
+                <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
+                <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
+                <View style={[styles.carWheel, styles.carWheelFrontRight]} />
+                <View style={[styles.carWheel, styles.carWheelRearLeft]} />
+                <View style={[styles.carWheel, styles.carWheelRearRight]} />
+                <View style={styles.carSpoiler} />
+              </View>
+              
+              {/* AI Car 4 - Red */}
+              <View
+                key="fallback-ai-car-3"
+                style={[
+                  styles.carBody,
+                  styles.aiCar,
+                  {
+                    backgroundColor: '#FF4444',
+                    borderColor: '#FF4444',
+                    left: worldToScreen(170, 150).x - 20,
+                    top: worldToScreen(170, 150).y - 10,
+                  },
+                ]}
+              >
+                <View style={styles.carWindows} />
+                <View style={[styles.carHeadlight, styles.carHeadlightLeft]} />
+                <View style={[styles.carHeadlight, styles.carHeadlightRight]} />
+                <View style={[styles.carWheel, styles.carWheelFrontLeft]} />
+                <View style={[styles.carWheel, styles.carWheelFrontRight]} />
+                <View style={[styles.carWheel, styles.carWheelRearLeft]} />
+                <View style={[styles.carWheel, styles.carWheelRearRight]} />
+                <View style={styles.carSpoiler} />
+              </View>
+              
+              {/* AI Car 5 - Purple */}
+              <View
+                key="fallback-ai-car-4"
+                style={[
+                  styles.carBody,
+                  styles.aiCar,
+                  {
+                    backgroundColor: '#FF44FF',
+                    borderColor: '#FF44FF',
+                    left: worldToScreen(200, 150).x - 20,
+                    top: worldToScreen(200, 150).y - 10,
                   },
                 ]}
               >
@@ -357,6 +429,8 @@ const GameScreen: React.FC = () => {
           raceProgress={hudData.raceProgress}
           speed={hudData.speed}
           raceTime={hudData.raceTime}
+          playerPosition={hudData.playerPosition}
+          totalCars={hudData.totalCars}
         />
 
         {/* Pause Button */}

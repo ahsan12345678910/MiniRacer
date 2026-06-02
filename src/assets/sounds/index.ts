@@ -1,16 +1,6 @@
-// Audio asset exports
-// Note: In a real implementation, you would place actual .mp3 files here
-// For now, we'll create placeholder references
+// Simple audio configuration
+// No complex imports needed - expo-audio handles this directly
 
-// Engine sound - should be a looping engine sound
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-export const ENGINE_SOUND = require('./engine.mp3');
-
-// UI click sound - short click sound for button presses
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-export const CLICK_SOUND = require('./click.mp3');
-
-// Audio configuration
 export const AUDIO_CONFIG = {
   ENGINE: {
     LOOP: true,
